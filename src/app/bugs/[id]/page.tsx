@@ -9,7 +9,7 @@ interface PageProps {
 
 export default async function BugDetailPage({ params }: PageProps) {
   const { data: bug, error } = await supabase
-    .from<Bug>('bugs')
+    .from('bugs')
     .select('*')
     .eq('id', params.id)
     .single()

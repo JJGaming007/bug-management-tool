@@ -11,7 +11,7 @@ export const SubtasksList: FC<SubtasksListProps> = ({ parentId }) => {
   const [subs, setSubs] = useState<Bug[]>([])
   useEffect(() => {
     supabase
-      .from<Bug>('bugs')
+      .from('bugs')
       .select('*')
       .eq('parent_id', parentId)
       .order('created_at', { ascending: false })

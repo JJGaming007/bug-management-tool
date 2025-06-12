@@ -25,7 +25,7 @@ export const SaveFilter: FC<SaveFilterProps> = ({
   useEffect(() => {
     ;(async () => {
       const { data } = await supabase
-        .from<SavedFilter>('saved_filters')
+        .from('saved_filters')
         .select('*')
         .order('created_at', { ascending: false })
       setSaved(data || [])
@@ -46,7 +46,7 @@ export const SaveFilter: FC<SaveFilterProps> = ({
     setName('')
     // reload
     const { data } = await supabase
-      .from<SavedFilter>('saved_filters')
+      .from('saved_filters')
       .select('*')
       .order('created_at', { ascending: false })
     setSaved(data || [])
