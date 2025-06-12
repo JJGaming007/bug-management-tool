@@ -21,7 +21,10 @@
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "18.2.0",
-    "recharts": "^2.4.0"
+    "recharts": "^2.4.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.2.1",
+    "date-fns": "^2.30.0"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.0.0",
