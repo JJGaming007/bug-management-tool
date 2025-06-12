@@ -11,7 +11,7 @@ export default function BoardPage() {
 
   const loadBugs = async () => {
     const { data, error } = await supabase
-      .from<Bug>('bugs')
+      .from('bugs')
       .select('*')
       .order('created_at', { ascending: false })
     if (!error && data) setBugs(data)

@@ -20,7 +20,7 @@ export const Timeline: FC<TimelineProps> = ({ bugId }) => {
   useEffect(() => {
     const loadActivities = async () => {
       const { data, error } = await supabase
-        .from<Activity>('activity_logs')
+        .from('activity_logs')
         .select('*')
         .eq('bug_id', bugId)
         .order('created_at', { ascending: true })

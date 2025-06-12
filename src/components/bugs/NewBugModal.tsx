@@ -33,7 +33,7 @@ export const NewBugModal: FC<NewBugModalProps> = ({ isOpen, onClose, onCreated }
   useEffect(() => {
     // Load users for assignee
     supabase
-      .from<{ username: string }>('users')
+      .from('users')
       .select('username')
       .then(({ data }) => {
         if (data) setUsers(data.map((u) => u.username))
@@ -41,7 +41,7 @@ export const NewBugModal: FC<NewBugModalProps> = ({ isOpen, onClose, onCreated }
 
     // Load existing bugs for parent selection
     supabase
-      .from<Pick<Bug, 'id' | 'title'>>('bugs')
+      .from('bugs')
       .select('id,title')
       .then(({ data }) => {
         if (data) setBugsList(data)
@@ -52,7 +52,7 @@ export const NewBugModal: FC<NewBugModalProps> = ({ isOpen, onClose, onCreated }
     e.preventDefault()
     setLoading(true)
     const { data, error } = await supabase
-      .from<Bug>('bugs')
+      .from('bugs')
       .insert([
         {
           title,

@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
-import type { Bug } from '@/types'
 import { IssueDetail } from '@/components/bugs/IssueDetail'
 
 interface PageProps {
@@ -9,7 +8,7 @@ interface PageProps {
 
 export default async function BugDetailPage({ params }: PageProps) {
   const { data: bug, error } = await supabase
-    .from<Bug>('bugs')
+    .from('bugs')
     .select('*')
     .eq('id', params.id)
     .single()
