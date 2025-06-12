@@ -24,6 +24,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <Link href="/bugs" className="block hover:text-[var(--accent)]">
                   Bugs
                 </Link>
+                <Link href="/board" className="block hover:text-[var(--accent)]">
+                  Board
+                </Link>
                 <Link href="/sprints" className="block hover:text-[var(--accent)]">
                   Sprints
                 </Link>

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Dialog } from '@headlessui/react'
 import { X } from 'lucide-react'
-import supabase from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { TextArea } from '@/components/ui/TextArea'
