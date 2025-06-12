@@ -1,14 +1,7 @@
 'use client'
 import { FC, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
-
-interface Activity {
-  id: number
-  bug_id: number
-  action: string
-  actor: string
-  created_at: string
-}
+import type { Activity } from '@/types'
 
 interface TimelineProps {
   bugId: number

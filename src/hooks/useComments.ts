@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
-
-export interface Comment {
-  id: number
-  bug_id: number
-  author: string
-  content: string
-  created_at: string
-}
+import type { Comment } from '@/types'
 
 export function useComments(bugId: number) {
   const [comments, setComments] = useState<Comment[]>([])
