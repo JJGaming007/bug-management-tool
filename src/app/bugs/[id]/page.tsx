@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
-import type { Bug } from '@/types'
 import { IssueDetail } from '@/components/bugs/IssueDetail'
 
 interface PageProps {
