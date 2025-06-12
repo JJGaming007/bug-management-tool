@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import supabase from '@/lib/supabase/client'
-import type { Bug } from '@/lib/types'
+import { supabase } from '@/lib/supabase/client'
+import type { Bug } from '@/types'
 
 interface BugStore {
   bugs: Bug[]
