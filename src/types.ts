@@ -48,3 +48,25 @@ export interface SavedFilter {
   priority_filter: string[]
   created_at: string
 }
+
+export interface Attachment {
+  id: number
+  bug_id: number
+  file_name: string
+  file_url: string
+  uploaded_at?: string | null
+}
+
+export interface Watcher {
+  id: number
+  bug_id: number
+  user_email: string
+  added_at?: string | null
+}
+
+export interface Sprint {
+  id: number
+  name: string
+  start_date: string
+  end_date: string
+}
