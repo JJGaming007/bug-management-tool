@@ -1,61 +1,29 @@
-import { formatRelativeTime, getStatusColor, getPriorityColor } from '@/lib/utils'
-import { Badge } from '@/components/ui/Badge'
-import type { BugWithDetails } from '@/lib/types'
+'use client'
+import { FC, useMemo } from 'react'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import type { Bug } from '@/types'
 
-interface BugCardProps {
-  bug: BugWithDetails
-  onClick: () => void
+interface BugChartProps {
+  bugs: Bug[]
 }
 
-export function BugCard({ bug, onClick }: BugCardProps) {
+export const BugChart: FC<BugChartProps> = ({ bugs }) => {
+  const data = useMemo(() => {
+    const counts = { open: 0, 'in-progress': 0, closed: 0 }
+    bugs.forEach((b) => {
+      if (counts[b.status] !== undefined) counts[b.status]++
+    })
+    return Object.entries(counts).map(([status, value]) => ({ status, value }))
+  }, [bugs])
+
   return (
-    <div
-      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer"
-      onClick={onClick}
-    >
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-            {bug.bug_key}
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            {bug.title}
-          </h3>
-        </div>
-        <Badge
-          className={`${getStatusColor(bug.status)} text-white`}
-        >
-          {bug.status.replace('_', ' ').toUpperCase()}
-        </Badge>
-      </div>
-
-      <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
-        {bug.description}
-      </p>
-
-      <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-        <div className="flex items-center space-x-4">
-          <span className={getPriorityColor(bug.priority)}>
-            Priority: {bug.priority.toUpperCase()}
-          </span>
-          <span>Severity: {bug.severity}</span>
-          {bug.component && (
-            <span>Component: {bug.component.name}</span>
-          )}
-        </div>
-
-        <div className="flex items-center space-x-4">
-          {bug.assignee && (
-            <div className="flex items-center space-x-2">
-              <div className="h-6 w-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs">
-                {bug.assignee.full_name?.[0] || bug.assignee.email[0]}
-              </div>
-              <span>{bug.assignee.full_name || bug.assignee.email}</span>
-            </div>
-          )}
-          <span>{formatRelativeTime(bug.updated_at)}</span>
-        </div>
-      </div>
-    </div>
+    <ResponsiveContainer width="100%" height={250}>
+      <BarChart data={data}>
+        <XAxis dataKey="status" />
+        <YAxis />
+        <Tooltip />
+        <Bar dataKey="value" />
+      </BarChart>
+    </ResponsiveContainer>
   )
 }

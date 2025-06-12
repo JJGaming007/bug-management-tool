@@ -1,17 +1,17 @@
 // src/app/ClientRoot.tsx
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import Providers from './providers';
+import { useEffect, useState } from 'react'
+import Providers from './providers'
 
 export default function ClientRoot({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    setMounted(true)
+  }, [])
 
-  if (!mounted) return null;
+  if (!mounted) return null
 
-  return <Providers>{children}</Providers>;
+  return <Providers>{children}</Providers>
 }

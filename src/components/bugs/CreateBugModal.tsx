@@ -1,131 +1,64 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { Input } from '@/components/ui/Input';
-import { TextArea } from '@/components/ui/TextArea';
-import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
+import { useState } from 'react'
+import { Dialog } from '@headlessui/react'
+import { X } from 'lucide-react'
+import supabase from '@/lib/supabase/client'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { TextArea } from '@/components/ui/TextArea'
+import { useAuth } from '@/hooks/useAuth'
 
-const supabase = createClient();
+export function CreateBugModal({ isOpen, onClose, onCreate }: any) {
+  const { user } = useAuth()
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
 
-export function CreateBugModal() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [severity, setSeverity] = useState('low');
-  const [status, setStatus] = useState('Open');
-  const [component, setComponent] = useState('');
-  const [loading, setLoading] = useState(false);
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    await supabase.from('bugs').insert({
+      title,
+      description,
+      reporter: user?.email,
+    })
+    setTitle('')
+    setDescription('')
+    onCreate()
+    onClose()
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      alert('❌ Unable to get current user.');
-      setLoading(false);
-      return;
-    }
-
-    const bugKey = `BUG-${Date.now()}`;
-
-    const { data, error } = await supabase
-      .from('bugs')
-      .insert({
-        bug_key: bugKey,
-        title,
-        description,
-        severity,
-        status,
-        component: component || null,
-        reporter_id: user.id,
-        created_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    setLoading(false);
-
-    if (error) {
-      console.error('Bug creation failed:', error);
-      alert('❌ Failed to create bug: ' + error.message);
-      return;
-    }
-
-    if (data) {
-      alert('✅ Bug created successfully!');
-      setIsOpen(false);
-      setTitle('');
-      setDescription('');
-      setSeverity('low');
-      setStatus('Open');
-      setComponent('');
-    }
-  };
+  if (!isOpen) return null
 
   return (
-    <>
-      <Button onClick={() => setIsOpen(true)}>+ New Bug</Button>
-      <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Create Bug">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
-          <TextArea
-            label="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            required
-          />
-          <Input
-            label="Component (optional)"
-            value={component}
-            onChange={(e) => setComponent(e.target.value)}
-          />
-          <div>
-            <label className="block mb-1 text-sm font-medium text-gray-700">Severity</label>
-            <select
-              value={severity}
-              onChange={(e) => setSeverity(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </div>
-          <div>
-            <label className="block mb-1 text-sm font-medium text-gray-700">Status</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-            >
-              <option value="Open">Open</option>
-              <option value="Todo">Todo</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Dev Complete">Dev Complete</option>
-              <option value="QA Verified">QA Verified</option>
-              <option value="Closed">Closed</option>
-              <option value="Reopened">Reopened</option>
-            </select>
-          </div>
-          <div className="flex justify-end">
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Bug'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
-    </>
-  );
+    <Dialog open onClose={onClose} className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <Dialog.Overlay className="fixed inset-0 bg-black/60" />
+        <div className="relative bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md p-6 z-10">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:hover:text-white"
+            aria-label="Close"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <Dialog.Title className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
+            Create Bug
+          </Dialog.Title>
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div>
+              <label className="block text-sm text-gray-700 dark:text-gray-300">Title</label>
+              <Input value={title} onChange={setTitle} required />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 dark:text-gray-300">Description</label>
+              <TextArea value={description} onChange={setDescription} rows={3} required />
+            </div>
+            <div className="flex justify-end">
+              <Button type="submit">Create</Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Dialog>
+  )
 }

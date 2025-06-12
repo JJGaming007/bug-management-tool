@@ -1,10 +1,4 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type BugStatus = 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'reopened'
 export type BugPriority = 'low' | 'medium' | 'high' | 'critical'

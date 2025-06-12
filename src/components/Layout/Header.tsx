@@ -1,8 +1,8 @@
 // src/components/Layout/Header.tsx
 'use client'
-import { useAuth }  from '@/hooks/useAuth'
+import { useAuth } from '@/hooks/useAuth'
 import { useTheme } from '@/lib/context/ThemeContext'
-import { Button }   from '@/components/ui/Button'
+import { Button } from '@/components/ui/Button'
 import { Sun, Moon } from 'lucide-react'
 
 export function Header() {
@@ -12,9 +12,7 @@ export function Header() {
   return (
     <header className="flex justify-between items-center mb-6">
       <div className="flex items-center space-x-4">
-        <span className="text-gray-600 dark:text-gray-300">
-          {user?.email}
-        </span>
+        <span className="text-gray-600 dark:text-gray-300">{user?.email}</span>
         <Button variant="outline" size="sm" onClick={() => logout()}>
           Logout
         </Button>

@@ -8,18 +8,19 @@ import { AuthProvider } from '@/lib/context/AuthContext'
 import { ThemeProvider } from '@/lib/context/ThemeContext'
 
 export default function Providers({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: {
-      queries: { staleTime: 60_000 },
-    },
-  }))
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: { staleTime: 60_000 },
+        },
+      }),
+  )
 
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemeProvider>
-        {children}
-        </ThemeProvider>
+        <ThemeProvider>{children}</ThemeProvider>
       </AuthProvider>
       <Toaster position="top-right" />
       <ReactQueryDevtools initialIsOpen={false} />

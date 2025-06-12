@@ -1,41 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+/* Light mode colors */
+:root {
+  --bg: #fffdf8;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --text: #111827;
+  --subtext: #6b7280;
+  --accent: #ffd700;
+  --accent-hover: #ffeb3b;
+}
+
+/* Dark mode overrides */
+.dark {
+  --bg: #121212;
+  --card: #1e1e1e;
+  --border: #2a2a2a;
+  --text: #f9fafb;
+  --subtext: #9ca3af;
+  --accent: #ffd700;
+  --accent-hover: #ffeb3b;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Custom font */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-
-/* Global defaults */
-body {
+/* Global resets & typography */
+html {
+  background: var(--bg);
+  color: var(--text);
   font-family: 'Inter', sans-serif;
-  background-color: #fafafa;
-  color: #27272a;
-  margin: 0;
-  padding: 0;
+  scroll-behavior: smooth;
 }
 
-/* Utility */
 a {
-  color: #2e88f4;
-  text-decoration: none;
+  color: var(--accent);
+  transition: color 0.2s;
 }
 
-* {
-  box-sizing: border-box;
+a:hover {
+  color: var(--accent-hover);
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #f4f4f5;
-}
-::-webkit-scrollbar-thumb {
-  background-color: #d4d4d8;
-  border-radius: 4px;
-}
-h1, h2, h3, h4, h5, h6 {
+button {
   font-weight: 600;
-  color: #111827;
+  transition:
+    background-color 0.2s,
+    transform 0.1s;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+/* Card utility */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  padding: 1.25rem;
 }

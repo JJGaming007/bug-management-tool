@@ -1,44 +1,30 @@
 'use client'
+import { FC } from 'react'
+import type { Bug } from '@/types'
 
-import { useBugs } from '@/hooks/useBugs'
-import { useBugStore } from '@/stores/bugStore'
-import { getStatusColor,getPriorityColor } from '@/lib/utils'
-import Link from 'next/link'
+interface RecentBugsProps {
+  bugs: Bug[]
+  onSelect?: (bug: Bug) => void
+}
 
-export function RecentBugs() {
-  const { data: bugs = [], isLoading, error } = useBugs()
-  const { setSelectedBug } = useBugStore()
-
-  if (isLoading) return <p className="text-gray-500">Loading…</p>
-  if (error)     return <p className="text-red-500">Error</p>
-
-  const recent = bugs
-    .slice().sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
-    .slice(0,5)
-
-  if (!recent.length) return <p className="text-gray-500">No recent bugs.</p>
+export const RecentBugs: FC<RecentBugsProps> = ({ bugs, onSelect }) => {
+  const recent = bugs.slice(-5).reverse()
 
   return (
-    <ul className="divide-y divide-gray-200">
-      {recent.map(bug=>(
-        <li key={bug.id} className="flex justify-between items-center py-4">
-          <Link
-            href={`/bugs/${bug.id}`}
-            onClick={()=>setSelectedBug(bug)}
-            className="font-medium text-primary-600 hover:underline"
-          >
-            {bug.title}
-          </Link>
-          <div className="flex items-center gap-3 text-xs">
-            <span className={`px-2 py-1 rounded ${getStatusColor(bug.status)} bg-opacity-10`}>
-              {bug.status}
-            </span>
-            <span className={`px-2 py-1 rounded ${getPriorityColor(bug.priority)} bg-opacity-10`}>
-              {bug.priority}
-            </span>
-          </div>
+    <ul className="space-y-2">
+      {recent.map((bug) => (
+        <li
+          key={bug.id}
+          onClick={() => onSelect?.(bug)}
+          className="p-3 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+        >
+          <p className="font-medium">{bug.title}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {new Date(bug.created_at).toLocaleDateString()}
+          </p>
         </li>
       ))}
+      {recent.length === 0 && <li className="text-center text-gray-500">No recent bugs.</li>}
     </ul>
   )
 }
