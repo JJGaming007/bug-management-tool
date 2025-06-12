@@ -14,7 +14,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const fetchBugs = async () => {
-      const { data, error } = await supabase.from<Bug>('bugs').select('*')
+      const { data, error } = await supabase.from('bugs').select('*')
       if (error) console.error('Error loading bugs:', error)
       else setBugs(data || [])
       setLoading(false)

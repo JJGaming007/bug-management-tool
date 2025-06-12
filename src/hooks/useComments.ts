@@ -16,7 +16,7 @@ export function useComments(bugId: number) {
   useEffect(() => {
     const fetch = async () => {
       const { data, error } = await supabase
-        .from<Comment>('comments')
+        .from('comments')
         .select('*')
         .eq('bug_id', bugId)
         .order('created_at', { ascending: true })

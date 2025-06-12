@@ -13,7 +13,7 @@ export const EpicSelector: FC<EpicSelectorProps> = ({ value, onChange }) => {
 
   useEffect(() => {
     supabase
-      .from<Epic>('epics')
+      .from('epics')
       .select('*')
       .order('created_at', { ascending: true })
       .then(({ data, error }) => {

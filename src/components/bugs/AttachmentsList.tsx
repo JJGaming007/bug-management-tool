@@ -14,7 +14,7 @@ export const AttachmentsList: FC<AttachmentsListProps> = ({ bugId }) => {
 
   const load = async () => {
     const { data, error } = await supabase
-      .from<Attachment>('attachments')
+      .from('attachments')
       .select('*')
       .eq('bug_id', bugId)
       .order('uploaded_at', { ascending: false })

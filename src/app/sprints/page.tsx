@@ -12,7 +12,7 @@ export default function SprintsPage() {
 
   const load = async () => {
     const { data, error } = await supabase
-      .from<Sprint>('sprints')
+      .from('sprints')
       .select('*')
       .order('start_date', { ascending: true })
     if (!error && data) setSprints(data)

@@ -10,7 +10,7 @@ export function useBugs() {
     queryKey: ['bugs'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from<Bug>('bugs')
+        .from('bugs')
         .select('*')
       if (error) throw error
       return data!

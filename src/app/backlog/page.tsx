@@ -11,7 +11,7 @@ export default function BacklogPage() {
 
   useEffect(() => {
     supabase
-      .from<Bug>('bugs')
+      .from('bugs')
       .select('*')
       .is('sprint_id', null)
       .order('created_at', { ascending: false })
