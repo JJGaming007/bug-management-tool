@@ -18,7 +18,7 @@ export const useBugStore = create<BugStore>((set) => ({
   fetchBugs: async () => {
     set({ loading: true })
     const { data, error } = await supabase
-      .from<Bug>('bugs')
+      .from('bugs')
       .select('*')
       .order('created_at', { ascending: false })
     if (error) {

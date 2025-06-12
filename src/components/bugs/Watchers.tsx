@@ -13,7 +13,7 @@ export const Watchers: FC<WatchersProps> = ({ bugId }) => {
   const [watchers, setWatchers] = useState<Watcher[]>([])
 
   const loadWatchers = async () => {
-    const { data, error } = await supabase.from<Watcher>('watchers').select('*').eq('bug_id', bugId)
+    const { data, error } = await supabase.from('watchers').select('*').eq('bug_id', bugId)
     if (!error && data) setWatchers(data)
   }
 

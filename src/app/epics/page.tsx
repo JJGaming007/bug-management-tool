@@ -13,7 +13,7 @@ export default function EpicsPage() {
 
   useEffect(() => {
     supabase
-      .from<Epic>('epics')
+      .from('epics')
       .select('*')
       .order('created_at', { ascending: true })
       .then(({ data, error }) => {
@@ -33,7 +33,7 @@ export default function EpicsPage() {
     setKey('')
     setDescription('')
     const { data } = await supabase
-      .from<Epic>('epics')
+      .from('epics')
       .select('*')
       .order('created_at', { ascending: true })
     setEpics(data || [])
