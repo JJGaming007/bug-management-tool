@@ -1,4 +1,4 @@
-import { shortId } from './index'
+import { shortId } from './utils'
 
 describe('shortId', () => {
   it('returns first 8 uppercase characters', () => {

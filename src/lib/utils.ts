@@ -2,6 +2,7 @@
 
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { format } from 'date-fns'
 
 /**
  * Merges Tailwind class names intelligently, deduplicating and resolving conflicts.
@@ -16,6 +17,20 @@ export function cn(...inputs: Parameters<typeof clsx>): string {
  */
 export function shortId(id: string): string {
   return id.slice(0, 8).toUpperCase()
+}
+
+/**
+ * Format a date to `MMM dd, yyyy`.
+ */
+export function formatDate(date: string | Date): string {
+  return format(new Date(date), 'MMM dd, yyyy')
+}
+
+/**
+ * Format a date to `MMM dd, yyyy HH:mm`.
+ */
+export function formatDateTime(date: string | Date): string {
+  return format(new Date(date), 'MMM dd, yyyy HH:mm')
 }
 
 /**
