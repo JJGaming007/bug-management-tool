@@ -1,7 +1,7 @@
 // src/components/bugs/AttachmentsList.tsx
 'use client'
 
-import { FC, useState, useEffect } from 'react'
+import { FC, useState, useEffect, useCallback } from 'react'
 import type { Attachment } from '@/types'
 import { supabase } from '@/lib/supabase/client'
 
@@ -12,18 +12,18 @@ interface AttachmentsListProps {
 export const AttachmentsList: FC<AttachmentsListProps> = ({ bugId }) => {
   const [files, setFiles] = useState<Attachment[]>([])
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const { data, error } = await supabase
       .from('attachments')
       .select('*')
       .eq('bug_id', bugId)
       .order('uploaded_at', { ascending: false })
     if (!error && data) setFiles(data)
-  }
+  }, [bugId])
 
   useEffect(() => {
     load()
-  }, [bugId])
+  }, [load])
 
   if (files.length === 0) {
     return <p className="text-sm text-[var(--subtext)]">No attachments</p>

@@ -214,7 +214,7 @@ export function LoginForm() {
                 onClick={() => setShowSignup(true)}
                 className="text-sm text-indigo-600 hover:text-indigo-500 font-medium transition-colors duration-200"
               >
-                Don't have an account? <span className="underline">Sign up here</span>
+                Don&apos;t have an account? <span className="underline">Sign up here</span>
               </button>
             </div>
           </form>
