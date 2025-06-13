@@ -9,8 +9,8 @@ export interface Bug {
   sprint_id?: number
   epic_id?: number
   parent_id?: number
-  status: 'open' | 'in-progress' | 'closed'
-  priority: 'low' | 'medium' | 'high'
+  status: 'open' | 'in-progress' | 'resolved' | 'closed'
+  priority: 'low' | 'medium' | 'high' | 'critical'
   assignee?: string
   created_at: string
 }

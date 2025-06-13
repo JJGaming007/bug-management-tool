@@ -18,17 +18,17 @@ export function DashboardStats({ stat }: { stat: 'total' | 'open' | 'resolved' |
       break
     case 'open':
       label = 'Open Bugs'
-      value = bugs.filter((b) => b.status === 'Open').length
+      value = bugs.filter((b) => b.status === 'open').length
       color = 'text-yellow-500 ring-yellow-100'
       break
     case 'resolved':
       label = 'Resolved Bugs'
-      value = bugs.filter((b) => b.status === 'Resolved').length
+      value = bugs.filter((b) => b.status === 'resolved').length
       color = 'text-green-600 ring-green-100'
       break
     case 'critical':
       label = 'Critical Bugs'
-      value = bugs.filter((b) => b.priority === 'Critical').length
+      value = bugs.filter((b) => b.priority === 'critical').length
       color = 'text-red-600 ring-red-100'
       break
   }

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/client'
 interface AuthContextType {
   user: any
   signIn: () => void
+  login: (email: string, password: string) => Promise<void>
   signOut: () => void
 }
 
@@ -37,11 +38,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signInWithOAuth({ provider: 'github' })
   }
 
+  const login = async (email: string, password: string) => {
+    await supabase.auth.signInWithPassword({ email, password })
+  }
+
   const signOut = async () => {
     await supabase.auth.signOut()
   }
 
-  return <AuthContext.Provider value={{ user, signIn, signOut }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, signIn, login, signOut }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

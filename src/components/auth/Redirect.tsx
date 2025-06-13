@@ -20,6 +20,7 @@ export function Redirect({ to, condition = true, delay = 0 }: RedirectProps) {
 
       return () => clearTimeout(timer)
     }
+    return undefined
   }, [condition, to, delay, router])
 
   if (!condition) {

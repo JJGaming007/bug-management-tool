@@ -237,10 +237,10 @@ function SignupForm({ onBack }: { onBack: () => void }) {
     setMessage('')
 
     try {
-      const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
+      const { createBrowserClient } = await import('../../lib/supabase/client.js')
+      const supabase = createBrowserClient()
 
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
       })
