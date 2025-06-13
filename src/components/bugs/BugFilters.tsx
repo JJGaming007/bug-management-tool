@@ -23,7 +23,7 @@ export function BugFilters({
 }: Props) {
   return (
     <div className="mb-8">
-      <div className="flex flex-col sm:flex-row items-stretch gap-4 bg-white dark:bg-gray-800 shadow rounded-xl p-4">
+      <div className="flex flex-col sm:flex-row items-stretch gap-4 bg-[var(--card)] dark:bg-gray-800 shadow rounded-xl p-4">
         {/* Search */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />

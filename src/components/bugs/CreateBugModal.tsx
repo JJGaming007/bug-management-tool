@@ -33,7 +33,7 @@ export function CreateBugModal({ isOpen, onClose, onCreate }: any) {
     <Dialog open onClose={onClose} className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4">
         <div className="fixed inset-0 bg-black/60" />
-        <div className="relative bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md p-6 z-10">
+        <div className="relative bg-[var(--card)] dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md p-6 z-10">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:hover:text-white"

@@ -1,42 +1,46 @@
-// src/components/ui/TopBar.tsx
 'use client'
-import { FC, useState } from 'react'
+
+import { FC } from 'react'
+import { useTheme } from '@/lib/context/ThemeContext'
+import {
+  MagnifyingGlassIcon,
+  BellIcon,
+  UserCircleIcon,
+  SunIcon,
+  MoonIcon,
+} from '@heroicons/react/24/outline'
 
 export const TopBar: FC = () => {
-  const [q, setQ] = useState('')
+  const { theme, toggleTheme } = useTheme()
+
   return (
-    <header className="flex items-center justify-between bg-[var(--card)] border-b border-[var(--border)] px-6 py-3">
-      {/* Project selector */}
-      <div className="flex items-center gap-2">
-        <span className="font-semibold text-lg">Project:</span>
-        <button className="flex items-center gap-1 font-medium hover:text-[var(--accent)]">
-          BugTracker <span className="text-sm">▼</span>
-        </button>
+    <header className="flex items-center justify-between bg-[var(--card)] border-b border-[var(--border)] px-4 py-2">
+      <div className="flex items-center space-x-4">
+        <span className="text-xl font-bold">Project:</span>
+        <span className="font-medium">BugTracker</span>
       </div>
 
-      {/* Global search */}
-      <div className="flex items-center flex-1 px-4">
-        <div className="relative w-full">
-          <span
-            className="absolute left-3 top-1/2 text-[var(--subtext)]"
-            style={{ transform: 'translateY(-50%)' }}
-          >
-            🔍
-          </span>
+      <div className="flex-1 mx-6">
+        <div className="relative">
+          <MagnifyingGlassIcon className="absolute top-1/2 left-3 h-5 w-5 text-[var(--subtext)] -translate-y-1/2" />
           <input
             type="text"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search issues, projects, users…"
-            className="w-full pl-10 pr-4 py-2 border rounded-lg bg-[var(--bg)] focus:border-[var(--accent)]"
+            placeholder="Search issues, projects, users..."
+            className="w-full pl-10 pr-4 py-1 rounded bg-[var(--bg)] border border-[var(--border)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
           />
         </div>
       </div>
 
-      {/* Notifications & Profile */}
-      <div className="flex items-center gap-4 text-[var(--subtext)]">
-        <span className="cursor-pointer hover:text-[var(--accent-hover)]">🔔</span>
-        <span className="cursor-pointer hover:text-[var(--accent-hover)]">👤</span>
+      <div className="flex items-center space-x-4">
+        <button onClick={toggleTheme} aria-label="Toggle theme">
+          {theme === 'light' ? (
+            <MoonIcon className="h-6 w-6 text-[var(--text)]" />
+          ) : (
+            <SunIcon className="h-6 w-6 text-[var(--text)]" />
+          )}
+        </button>
+        <BellIcon className="h-6 w-6 text-[var(--text)] cursor-pointer" />
+        <UserCircleIcon className="h-8 w-8 text-[var(--text)] cursor-pointer" />
       </div>
     </header>
   )

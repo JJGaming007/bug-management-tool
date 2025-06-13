@@ -1,30 +1,51 @@
+// src/components/dashboard/BugChart.tsx
 'use client'
+
 import { FC } from 'react'
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
-import type { Bug } from '@/types'
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from 'recharts'
 
 interface BugChartProps {
-  bugs: Bug[]
+  data: number[]
 }
 
-export const BugChart: FC<BugChartProps> = ({ bugs }) => {
-  const counts = bugs.reduce<Record<string, number>>((acc, b) => {
-    acc[b.status] = (acc[b.status] || 0) + 1
-    return acc
-  }, {})
-  const data = Object.entries(counts).map(([status, count]) => ({
-    status,
-    count,
-  }))
+export const BugChart: FC<BugChartProps> = ({ data }) => {
+  // Build an array of { date, count } for the last N days
+  const chartData = data.map((count, idx) => {
+    const day = new Date()
+    day.setDate(day.getDate() - (data.length - 1 - idx))
+    return {
+      date: day.toLocaleDateString(),
+      count,
+    }
+  })
 
   return (
     <ResponsiveContainer width="100%" height={200}>
-      <BarChart data={data}>
-        <XAxis dataKey="status" />
-        <YAxis />
-        <Tooltip />
-        <Bar dataKey="count" />
-      </BarChart>
+      <LineChart data={chartData}>
+        <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+        <XAxis dataKey="date" stroke="var(--text)" tick={{ fontSize: 12 }} />
+        <YAxis stroke="var(--text)" />
+        <Tooltip
+          contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
+          itemStyle={{ color: 'var(--text)' }}
+        />
+        <Line
+          type="monotone"
+          dataKey="count"
+          stroke="var(--accent)"
+          strokeWidth={2}
+          dot={{ fill: 'var(--accent)' }}
+          activeDot={{ r: 6 }}
+        />
+      </LineChart>
     </ResponsiveContainer>
   )
 }

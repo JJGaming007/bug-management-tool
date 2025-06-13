@@ -1,7 +1,10 @@
+// src/app/sprints/page.tsx
 'use client'
+
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import type { Sprint } from '@/types'
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs'
 
 export default function SprintsPage() {
   const [sprints, setSprints] = useState<Sprint[]>([])
@@ -40,58 +43,82 @@ export default function SprintsPage() {
     }
   }
 
-  if (loading) return <div>Loading sprints...</div>
+  if (loading) {
+    return <div className="text-center mt-10">Loading sprints…</div>
+  }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">Sprints</h1>
-      <form onSubmit={handleCreate} className="mb-6 flex flex-wrap gap-2 items-end">
-        <div>
-          <label className="block mb-1">Name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="px-3 py-1 border rounded-lg"
-            placeholder="Sprint Name"
-          />
-        </div>
-        <div>
-          <label className="block mb-1">Start Date</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="px-3 py-1 border rounded-lg"
-          />
-        </div>
-        <div>
-          <label className="block mb-1">End Date</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="px-3 py-1 border rounded-lg"
-          />
-        </div>
-        <button type="submit" className="px-4 py-2 bg-[var(--accent)] rounded-lg text-black">
-          Create Sprint
-        </button>
-      </form>
+    <div className="flex flex-col h-full">
+      <Breadcrumbs />
 
-      <ul className="space-y-4">
-        {sprints.map((s) => (
-          <li key={s.id} className="card flex justify-between items-center">
-            <div>
-              <h2 className="font-semibold">{s.name}</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {new Date(s.start_date).toLocaleDateString()} —{' '}
-                {new Date(s.end_date).toLocaleDateString()}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
+      <div className="p-4 space-y-6 bg-[var(--bg)]">
+        <h1 className="text-2xl font-semibold text-[var(--text)]">Sprints</h1>
+
+        <form
+          onSubmit={handleCreate}
+          className="flex flex-wrap gap-4 items-end bg-[var(--card)] border border-[var(--border)] p-4 rounded-lg"
+        >
+          {/* Sprint Name */}
+          <div className="flex-1 min-w-[200px]">
+            <label className="block mb-1 text-[var(--text)]">Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Sprint Name"
+              className="w-full px-3 py-2 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
+            />
+          </div>
+
+          {/* Start Date */}
+          <div>
+            <label className="block mb-1 text-[var(--text)]">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="px-3 py-2 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
+            />
+          </div>
+
+          {/* End Date */}
+          <div>
+            <label className="block mb-1 text-[var(--text)]">End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="px-3 py-2 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
+            />
+          </div>
+
+          {/* Create Button */}
+          <button
+            type="submit"
+            className="px-5 py-2 rounded-lg bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)] transition"
+          >
+            Create Sprint
+          </button>
+        </form>
+
+        {/* Sprint List */}
+        <ul className="space-y-4">
+          {sprints.map((s) => (
+            <li
+              key={s.id}
+              className="flex justify-between items-center bg-[var(--card)] border border-[var(--border)] p-4 rounded-lg"
+            >
+              <div>
+                <h2 className="text-lg font-semibold text-[var(--text)]">{s.name}</h2>
+                <p className="text-sm text-[var(--subtext)]">
+                  {new Date(s.start_date).toLocaleDateString()} —{' '}
+                  {new Date(s.end_date).toLocaleDateString()}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   )
 }

@@ -7,7 +7,7 @@ export function Sidebar() {
   const path = usePathname()
 
   return (
-    <aside className="w-60 h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <aside className="w-60 h-screen bg-[var(--card)] dark:bg-gray-900 p-6">
       <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-8">BugTracker</h2>
       <nav className="flex flex-col space-y-2">
         <Link

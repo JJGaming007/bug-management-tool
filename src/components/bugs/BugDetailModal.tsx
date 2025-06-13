@@ -13,7 +13,7 @@ interface BugDetailModalProps {
 
 export const BugDetailModal: FC<BugDetailModalProps> = ({ bug, onClose }) => (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl w-full max-w-2xl overflow-auto">
+    <div className="bg-[var(--card)] dark:bg-gray-800 p-6 rounded-2xl w-full max-w-2xl overflow-auto">
       <button onClick={onClose} className="float-right">
         Close
       </button>

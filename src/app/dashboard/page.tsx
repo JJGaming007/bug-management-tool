@@ -1,53 +1,124 @@
+// src/app/dashboard/page.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { Stats } from '@/components/dashboard/Stats'
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs'
 import { BugChart } from '@/components/dashboard/BugChart'
 import { RecentBugs } from '@/components/dashboard/RecentBugs'
-import { ExportCSV } from '@/components/dashboard/ExportCSV' // if you added this
-import type { Bug } from '@/types'
+
+interface Counts {
+  total: number
+  open: number
+  in_progress: number
+  closed: number
+}
 
 export default function DashboardPage() {
-  const [bugs, setBugs] = useState<Bug[]>([])
+  const [counts, setCounts] = useState<Counts>({
+    total: 0,
+    open: 0,
+    in_progress: 0,
+    closed: 0,
+  })
+  const [recent, setRecent] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [chartData, setChartData] = useState<number[]>([])
 
   useEffect(() => {
-    const fetchBugs = async () => {
-      const { data, error } = await supabase.from('bugs').select('*')
-      if (error) console.error('Error loading bugs:', error)
-      else setBugs(data || [])
+    async function load() {
+      // Fetch counts
+      const { data: all, error: errAll } = await supabase
+        .from('bugs')
+        .select('status', { count: 'exact' })
+      if (!errAll && all) {
+        const tally = all.reduce(
+          (acc, row) => {
+            const key = row.status.toLowerCase().replace(' ', '_') as keyof Counts
+            if (acc[key] != null) acc[key]++
+            return acc
+          },
+          { total: all.length, open: 0, in_progress: 0, closed: 0 }
+        )
+        setCounts(tally)
+      }
+
+      // Fetch recent (last 5)
+      const { data: rec, error: errRec } = await supabase
+        .from('bugs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5)
+      if (!errRec && rec) setRecent(rec)
+
+      // Simple trend: count per day for past 7 days
+      const days: number[] = []
+      for (let i = 6; i >= 0; i--) {
+        const day = new Date()
+        day.setDate(day.getDate() - i)
+        const dateString = day.toISOString().split('T')[0]
+        const { count } = await supabase
+          .from('bugs')
+          .select('*', { count: 'exact', head: true })
+          .eq('created_at', dateString, { cast: 'date' })
+        days.push(count || 0)
+      }
+      setChartData(days)
+
       setLoading(false)
     }
-    fetchBugs()
+    load()
   }, [])
 
   if (loading) {
-    return <div className="text-center mt-10">Loading...</div>
+       return (
+     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 p-4">
+       {Array.from({ length: 4 }).map((_, i) => (
+         <div
+           key={i}
+           className="h-28 bg-[var(--card)] border border-[var(--border)] rounded-lg p-6 animate-pulse"
+         />
+       ))}
+     </div>
+   )
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        {bugs.length > 0 && <ExportCSV bugs={bugs} />}
+    <div className="flex flex-col h-full">
+      <Breadcrumbs />
+
+      <h1 className="text-2xl font-semibold text-[var(--text)] mb-6">Dashboard</h1>
+
+      {/* Stats cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {[
+          { label: 'Total', value: counts.total, accent: 'var(--text)' },
+          { label: 'Open', value: counts.open, accent: '#ef4444' },            // red
+          { label: 'In Progress', value: counts.in_progress, accent: '#facc15' }, // yellow
+          { label: 'Closed', value: counts.closed, accent: '#22c55e' },         // green
+        ].map(({ label, value, accent }) => (
+          <div
+            key={label}
+            className="bg-[var(--card)] border border-[var(--border)] rounded-lg p-6 flex flex-col items-center"
+          >
+            <span className="text-sm mb-2">{label}</span>
+            <span className="text-3xl font-bold" style={{ color: accent }}>
+              {value}
+            </span>
+          </div>
+        ))}
       </div>
 
-      <Stats bugs={bugs} />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        <div className="card">
-          <h2 className="text-xl font-semibold mb-4">Bug Trends</h2>
-          <BugChart bugs={bugs} />
+      {/* Charts & recent */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-lg p-6">
+          <h2 className="text-lg font-semibold mb-4 text-[var(--text)]">Bug Trends</h2>
+          <BugChart data={chartData} />
         </div>
-        <div className="card">
-          <h2 className="text-xl font-semibold mb-4">Recent Bugs</h2>
-          <RecentBugs
-            bugs={bugs}
-            onSelect={() => {
-              /* optional */
-            }}
-          />
+
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-lg p-6">
+          <h2 className="text-lg font-semibold mb-4 text-[var(--text)]">Recent Bugs</h2>
+          <RecentBugs bugs={recent} />
         </div>
       </div>
     </div>

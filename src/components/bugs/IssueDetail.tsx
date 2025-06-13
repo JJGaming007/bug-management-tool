@@ -2,131 +2,181 @@
 'use client'
 
 import { FC, useState, useEffect } from 'react'
-import Link from 'next/link'
-import { supabase } from '@/lib/supabase/client'
-import type { Bug } from '@/types'
-import { IssueCard } from './IssueCard'
-import { CommentList } from './CommentList'
-import { CommentForm } from './CommentForm'
-import { Timeline } from './Timeline'
-import { AttachmentsList } from './AttachmentsList'
-import { AttachmentUpload } from './AttachmentUpload'
-import { Watchers } from './Watchers'
-import { EpicSelector } from './EpicSelector'
-import { SubtaskSelector } from './SubtaskSelector'
-import { SprintSelector } from './SprintSelector'
-import { IssueTypeSelector } from './IssueTypeSelector'
-import { LabelsInput } from './LabelsInput'
-import { DueDatePicker } from './DueDatePicker'
+import { Tabs } from '@/components/ui/Tabs'
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs'
+import type { definitions as DB } from '@/types/database'
+import { CommentList } from '@/components/bugs/CommentList'
+import { CommentForm } from '@/components/bugs/CommentForm'
+import { Timeline } from '@/components/bugs/Timeline'
+import { AttachmentsList } from '@/components/bugs/AttachmentsList'
+import { AttachmentUpload } from '@/components/bugs/AttachmentUpload'
+
+type Bug = DB['bugs']
 
 interface IssueDetailProps {
   bug: Bug
 }
 
 export const IssueDetail: FC<IssueDetailProps> = ({ bug }) => {
-  const [status, setStatus] = useState(bug.status)
-  const [priority, setPriority] = useState(bug.priority)
-  const [issueType, setIssueType] = useState(bug.issue_type)
-  const [epicId, setEpicId] = useState<number | null>(bug.epic_id ?? null)
-  const [parentId, setParentId] = useState<number | null>(bug.parent_id ?? null)
-  const [sprintId, setSprintId] = useState<number | null>(bug.sprint_id ?? null)
-  const [labels, setLabels] = useState<string[]>(bug.labels || [])
-  const [dueDate, setDueDate] = useState(bug.due_date?.slice(0, 10) ?? '')
+  const tabs = [
+    { key: 'details', label: 'Details' },
+    { key: 'comments', label: 'Comments' },
+    { key: 'activity', label: 'Activity' },
+    { key: 'attachments', label: 'Attachments' },
+  ]
 
-  // Persist updates
-  useEffect(() => {
-    supabase
-      .from('bugs')
-      .update({
-        status,
-        priority,
-        issue_type: issueType,
-        epic_id: epicId,
-        parent_id: parentId,
-        sprint_id: sprintId,
-        labels,
-        due_date: dueDate || null,
-      })
-      .eq('id', bug.id)
-  }, [status, priority, issueType, epicId, parentId, sprintId, labels, dueDate, bug.id])
+  const [status, setStatus] = useState(bug.status)
+  const [priority, setPriority] = useState(bug.priority ?? 'Medium')
+  const [epic, setEpic] = useState(bug.epic_id ?? '')
+  const [parent, setParent] = useState(bug.parent_id ?? '')
+  const [sprint, setSprint] = useState(bug.sprint_id ?? '')
+  const [labels, setLabels] = useState<string[]>(bug.labels || [])
+  const [dueDate, setDueDate] = useState(bug.due_date ?? '')
+
+  // TODO: load epics, parent issues, and sprints lists via Supabase
 
   return (
-    <div className="space-y-6">
-      <Link href="/bugs" className="text-sm underline">
-        ← Back to Issues
-      </Link>
+    <div className="flex flex-col h-full">
+      <Breadcrumbs />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Summary card */}
-        <div>
-          <IssueCard bug={bug} />
-        </div>
+      <div className="flex-1 p-4 overflow-auto">
+        <Tabs tabs={tabs}>
+          {/* Details tab */}
+          <div className="flex gap-6">
+            <section className="w-1/3 bg-[var(--card)] border border-[var(--border)] p-4 rounded">
+              <h2 className="text-xl font-semibold text-[var(--text)]">{bug.title}</h2>
+              <p className="text-sm text-[var(--subtext)]">#{bug.id}</p>
+              <p className="text-sm text-[var(--subtext)] mt-2">
+                Created: {new Date(bug.created_at).toLocaleDateString()}
+              </p>
+            </section>
 
-        {/* Details & actions */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Editable Fields */}
-          <section className="card">
-            <h2 className="text-xl font-semibold mb-4">Details</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block mb-1 font-medium">Status</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as any)}
-                  className="w-full px-3 py-2 border rounded-lg"
-                >
-                  <option value="open">Open</option>
-                  <option value="in-progress">In Progress</option>
-                  <option value="closed">Closed</option>
-                </select>
+            <section className="flex-1 bg-[var(--card)] border border-[var(--border)] p-6 rounded space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                {/* Status */}
+                <div>
+                  <label className="block mb-1 text-[var(--text)]">Status</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-full px-3 py-2 rounded bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
+                  >
+                    <option>Open</option>
+                    <option>In Progress</option>
+                    <option>Closed</option>
+                  </select>
+                </div>
+
+                {/* Priority */}
+                <div>
+                  <label className="block mb-1 text-[var(--text)]">Priority</label>
+                  <select
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value)}
+                    className="w-full px-3 py-2 rounded bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
+                  >
+                    <option>Low</option>
+                    <option>Medium</option>
+                    <option>High</option>
+                  </select>
+                </div>
+
+                {/* Issue Type */}
+                <div>
+                  <label className="block mb-1 text-[var(--text)]">Issue Type</label>
+                  <select
+                    value={bug.issue_type}
+                    disabled
+                    className="w-full px-3 py-2 rounded bg-[var(--bg)] border border-[var(--border)] text-[var(--text)]"
+                  >
+                    <option>Bug</option>
+                    <option>Task</option>
+                    <option>Story</option>
+                  </select>
+                </div>
+
+                {/* Epic */}
+                <div>
+                  <label className="block mb-1 text-[var(--text)]">Epic</label>
+                  <select
+                    value={epic}
+                    onChange={(e) => setEpic(e.target.value)}
+                    className="w-full px-3 py-2 rounded bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
+                  >
+                    <option value="">None</option>
+                    {/* TODO: map your epics here */}
+                  </select>
+                </div>
+
+                {/* Parent Issue */}
+                <div>
+                  <label className="block mb-1 text-[var(--text)]">Parent Issue</label>
+                  <select
+                    value={parent}
+                    onChange={(e) => setParent(e.target.value)}
+                    className="w-full px-3 py-2 rounded bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
+                  >
+                    <option value="">None</option>
+                    {/* TODO: map parent issues here */}
+                  </select>
+                </div>
+
+                {/* Sprint */}
+                <div>
+                  <label className="block mb-1 text-[var(--text)]">Sprint</label>
+                  <select
+                    value={sprint}
+                    onChange={(e) => setSprint(e.target.value)}
+                    className="w-full px-3 py-2 rounded bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
+                  >
+                    <option value="">None</option>
+                    {/* TODO: map sprints here */}
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block mb-1 font-medium">Priority</label>
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value as any)}
-                  className="w-full px-3 py-2 border rounded-lg"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
+
+              {/* Labels & Due Date */}
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block mb-1 text-[var(--text)]">Labels</label>
+                  <input
+                    type="text"
+                    value={labels.join(', ')}
+                    onChange={(e) => setLabels(e.target.value.split(',').map((l) => l.trim()))}
+                    placeholder="Add label"
+                    className="w-full px-3 py-2 rounded bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-[var(--text)]">Due Date</label>
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className="px-3 py-2 rounded bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
+                  />
+                </div>
               </div>
-              <IssueTypeSelector value={issueType} onChange={setIssueType} />
-              <EpicSelector value={epicId} onChange={setEpicId} />
-              <SubtaskSelector value={parentId} bugs={[bug]} onChange={setParentId} />
-              <SprintSelector value={sprintId} onChange={setSprintId} />
-              <LabelsInput value={labels} onChange={setLabels} />
-              <DueDatePicker value={dueDate} onChange={setDueDate} />
-            </div>
-          </section>
+            </section>
+          </div>
 
-          {/* Attachments */}
-          <section className="card">
-            <h2 className="text-xl font-semibold mb-4">Attachments</h2>
-            <AttachmentsList bugId={bug.id} />
-            <AttachmentUpload bugId={bug.id} onUploaded={() => {}} />
-          </section>
-
-          {/* Watchers */}
-          <section className="card">
-            <h2 className="text-xl font-semibold mb-4">Watchers</h2>
-            <Watchers bugId={bug.id} />
-          </section>
-
-          {/* Comments */}
-          <section className="card">
-            <h2 className="text-xl font-semibold mb-4">Comments</h2>
+          {/* Comments tab */}
+          <div>
             <CommentList bugId={bug.id} />
             <CommentForm bugId={bug.id} />
-          </section>
+          </div>
 
-          {/* Timeline */}
-          <section className="card">
-            <h2 className="text-xl font-semibold mb-4">Activity</h2>
+          {/* Activity tab */}
+          <div>
             <Timeline bugId={bug.id} />
-          </section>
-        </div>
+          </div>
+
+          {/* Attachments tab */}
+          <div>
+            <AttachmentsList bugId={bug.id} />
+            <AttachmentUpload bugId={bug.id} />
+          </div>
+        </Tabs>
       </div>
     </div>
   )

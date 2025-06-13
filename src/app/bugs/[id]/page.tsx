@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 import { IssueDetail } from '@/components/bugs/IssueDetail'
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs'
 
 interface PageProps {
   params: { id: string }
@@ -16,6 +17,7 @@ export default async function BugDetailPage({ params }: PageProps) {
   if (error || !bug) {
     return (
       <div className="text-center mt-10 text-red-600">
+        <Breadcrumbs />
         <p>Unable to load issue #{params.id}.</p>
         <Link href="/bugs" className="underline mt-4 inline-block">
           ← Back to Issues
