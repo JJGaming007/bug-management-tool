@@ -4,24 +4,19 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 First, install dependencies and run the development server:
 
-```bash
-npm install
-<<<<<<< 8bhi16-codex/fix-missing--react-hot-toast--module
-=======
-# run this whenever you pull new changes to avoid missing modules
->>>>>>> main
-```
+    npm install
+    # run this whenever you pull new changes to avoid missing modules
 
 Then start the dev server:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+    npm run dev
+    # or
+    yarn dev
+    # or
+    pnpm dev
+    # or
+    bun dev
+
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
