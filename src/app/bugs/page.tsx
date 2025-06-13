@@ -9,7 +9,9 @@ import { IssueCard } from '@/components/bugs/IssueCard'
 import { BulkActions } from '@/components/bugs/BulkActions'
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs'
 import { SkeletonCard } from '@/components/ui/SkeletonCard'
+import { NewBugModal } from '@/components/bugs/NewBugModal'
 import { supabase } from '@/lib/supabase/client'
+import type { Bug } from '@/types'
 
 export default function BugsPage() {
   const { data: bugs = [], isLoading, error, refetch } = useBugs()
@@ -18,26 +20,29 @@ export default function BugsPage() {
     status: { open: true, in_progress: true, closed: true },
   })
 
-  // Multi-select state
+  // Multi-select state (if you still have bulk actions)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-
-  const toggleSelect = (id: string) => {
+  const toggleSelect = (id: string) =>
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     )
-  }
-
   const clearSelection = () => setSelectedIds([])
 
-  const bulkChangeStatus = async (newStatus: 'Open' | 'In Progress' | 'Closed') => {
-    await supabase
-      .from('bugs')
-      .update({ status: newStatus })
-      .in('id', selectedIds)
-    clearSelection()
+  // Modal state
+  const [isModalOpen, setModalOpen] = useState(false)
+
+  // When a new bug is created, close modal and refetch
+  const handleCreated = (newBug: Bug) => {
+    setModalOpen(false)
     refetch()
   }
 
+  // Bulk actions (if any)
+  const bulkChangeStatus = async (newStatus: 'Open' | 'In Progress' | 'Closed') => {
+    await supabase.from('bugs').update({ status: newStatus }).in('id', selectedIds)
+    clearSelection()
+    refetch()
+  }
   const bulkDelete = async () => {
     await supabase.from('bugs').delete().in('id', selectedIds)
     clearSelection()
@@ -46,15 +51,16 @@ export default function BugsPage() {
 
   // Apply status filters
   const filtered = bugs.filter((b) => {
-    const key = (b.status as string)
-      .toLowerCase()
-      .replace(/\s+/g, '_') as keyof typeof filters.status
+    const key = (b.status as string).toLowerCase().replace(/\s+/g, '_') as
+      | 'open'
+      | 'in_progress'
+      | 'closed'
     return filters.status[key]
   })
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4 items-stretch">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
         {Array.from({ length: 6 }).map((_, i) => (
           <SkeletonCard key={i} />
         ))}
@@ -64,15 +70,23 @@ export default function BugsPage() {
 
   if (error) {
     return (
-      <div className="text-center mt-10 text-red-600">
-        Error: {error.message}
-      </div>
+      <div className="text-center mt-10 text-red-600">Error: {error.message}</div>
     )
   }
 
   return (
     <div className="flex flex-col h-full">
       <Breadcrumbs />
+
+      <div className="flex items-center justify-between px-4 py-2">
+        <h1 className="text-2xl font-semibold">Bugs</h1>
+        <button
+          onClick={() => setModalOpen(true)}
+          className="px-4 py-2 bg-[var(--accent)] text-black rounded hover:bg-[var(--accent-hover)]"
+        >
+          + New Issue
+        </button>
+      </div>
 
       {selectedIds.length > 0 && (
         <BulkActions
@@ -83,10 +97,10 @@ export default function BugsPage() {
         />
       )}
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         <Filters filters={filters} onChange={setFilters} />
 
-        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4 items-stretch">
+        <div className="flex-1 overflow-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
           {filtered.map((bug) => (
             <IssueCard
               key={bug.id}
@@ -97,6 +111,12 @@ export default function BugsPage() {
           ))}
         </div>
       </div>
+
+      <NewBugModal
+        isOpen={isModalOpen}
+        onClose={() => setModalOpen(false)}
+        onCreated={handleCreated}
+      />
     </div>
   )
 }

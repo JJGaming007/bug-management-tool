@@ -1,24 +1,30 @@
 'use client'
 import { FC } from 'react'
+import type { Pick as DBPick } from '@/types'
 
-interface SubtaskSelectorProps {
-  value?: number | null
+interface Props {
+  value: number | null
   bugs: { id: number; title: string }[]
-  onChange: (id: number | null) => void
+  onChange: (v: number | null) => void
 }
 
-export const SubtaskSelector: FC<SubtaskSelectorProps> = ({ value, bugs, onChange }) => (
-  <div className="mb-2">
-    <label className="block mb-1 font-medium">Parent Issue</label>
+export const SubtaskSelector: FC<Props> = ({ value, bugs, onChange }) => (
+  <div>
+    <label className="block mb-1 text-[var(--text)]">Parent Issue</label>
     <select
       value={value ?? ''}
       onChange={(e) => onChange(e.target.value ? +e.target.value : null)}
-      className="w-full px-3 py-2 border rounded-lg"
+      className="
+        w-full px-3 py-2 mb-4
+        bg-[var(--bg)] border border-[var(--border)]
+        text-[var(--text)] rounded-lg
+        focus:outline-none focus:ring focus:ring-[var(--accent-hover)]
+      "
     >
       <option value="">None</option>
       {bugs.map((b) => (
         <option key={b.id} value={b.id}>
-          #{b.id} – {b.title}
+          {b.title}
         </option>
       ))}
     </select>

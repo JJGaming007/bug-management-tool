@@ -1,4 +1,6 @@
+// src/components/bugs/NewBugModal.tsx
 'use client'
+
 import { FC, useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import type { Bug } from '@/types'
@@ -93,31 +95,52 @@ export const NewBugModal: FC<NewBugModalProps> = ({ isOpen, onClose, onCreated }
   }
 
   if (!isOpen) return null
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-[var(--card)] p-6 rounded-lg w-full max-w-lg">
-        <h2 className="text-xl font-bold mb-4">Create New Issue</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div
+        className="
+          bg-[var(--card)]
+          rounded-lg
+          w-full
+          max-w-lg
+          max-h-screen
+          overflow-auto
+          p-6
+        "
+      >
+        <h2 className="text-xl font-bold mb-4 text-[var(--text)]">Create New Issue</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Title */}
           <div>
-            <label className="block mb-1">Title</label>
+            <label className="block mb-1 text-[var(--text)]">Title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              className="w-full px-3 py-2 border rounded-lg"
+              className="
+                w-full px-3 py-2 
+                bg-[var(--bg)] border border-[var(--border)] 
+                text-[var(--text)] rounded-lg 
+                focus:outline-none focus:ring focus:ring-[var(--accent-hover)]
+              "
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block mb-1">Description</label>
+            <label className="block mb-1 text-[var(--text)]">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               required
-              className="w-full px-3 py-2 border rounded-lg"
+              className="
+                w-full px-3 py-2 h-32 resize-none
+                bg-[var(--bg)] border border-[var(--border)] 
+                text-[var(--text)] rounded-lg 
+                focus:outline-none focus:ring focus:ring-[var(--accent-hover)]
+              "
             />
           </div>
 
@@ -127,7 +150,7 @@ export const NewBugModal: FC<NewBugModalProps> = ({ isOpen, onClose, onCreated }
           {/* Epic */}
           <EpicSelector value={epicId} onChange={setEpicId} />
 
-          {/* Parent Issue for Sub-task */}
+          {/* Parent Issue */}
           <SubtaskSelector value={parentId} bugs={bugsList} onChange={setParentId} />
 
           {/* Sprint */}
@@ -139,11 +162,16 @@ export const NewBugModal: FC<NewBugModalProps> = ({ isOpen, onClose, onCreated }
 
           {/* Assignee */}
           <div>
-            <label className="block mb-1">Assignee</label>
+            <label className="block mb-1 text-[var(--text)]">Assignee</label>
             <select
               value={assignee}
               onChange={(e) => setAssignee(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg"
+              className="
+                w-full px-3 py-2 
+                bg-[var(--bg)] border border-[var(--border)] 
+                text-[var(--text)] rounded-lg 
+                focus:outline-none focus:ring focus:ring-[var(--accent-hover)]
+              "
             >
               <option value="">Unassigned</option>
               {users.map((u) => (
@@ -166,7 +194,11 @@ export const NewBugModal: FC<NewBugModalProps> = ({ isOpen, onClose, onCreated }
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-[var(--accent)] text-black rounded-lg hover:bg-[var(--accent-hover)]"
+              className="
+                px-4 py-2 
+                bg-[var(--accent)] text-black rounded-lg 
+                hover:bg-[var(--accent-hover)]
+              "
             >
               {loading ? 'Creating…' : 'Create'}
             </button>

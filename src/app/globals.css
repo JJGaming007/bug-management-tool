@@ -30,7 +30,7 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
+  background-color: var(--bg);
   color: var(--text);
   font-family: 'Merriweather', serif;   /* body uses serif */
 }
