@@ -1,5 +1,5 @@
 'use client'
-import { FC, useEffect, useState } from 'react'
+import { FC, useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/context/AuthContext'
 import type { Watcher } from '@/types'
@@ -12,14 +12,14 @@ export const Watchers: FC<WatchersProps> = ({ bugId }) => {
   const { user } = useAuth()
   const [watchers, setWatchers] = useState<Watcher[]>([])
 
-  const loadWatchers = async () => {
+  const loadWatchers = useCallback(async () => {
     const { data, error } = await supabase.from('watchers').select('*').eq('bug_id', bugId)
     if (!error && data) setWatchers(data)
-  }
+  }, [bugId])
 
   useEffect(() => {
     loadWatchers()
-  }, [bugId])
+  }, [loadWatchers])
 
   const toggleWatch = async () => {
     if (!user) return
