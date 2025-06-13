@@ -21,7 +21,9 @@ export const AttachmentUpload: FC<AttachmentUploadProps> = ({ bugId, onUploaded 
     if (upErr) {
       console.error(upErr)
     } else {
-      const { publicUrl } = supabase.storage.from('bug-attachments').getPublicUrl(data.path)
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('bug-attachments').getPublicUrl(data.path)
       await supabase.from('attachments').insert({
         bug_id: bugId,
         file_url: publicUrl,

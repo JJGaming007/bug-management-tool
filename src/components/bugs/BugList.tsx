@@ -10,7 +10,7 @@ import type { Bug } from '@/types'
 
 export const BugList: FC<{ bugs: Bug[] }> = ({ bugs }) => {
   // (You can remove useAuth entirely if you don't need login gating)
-  const { user } = useAuth()
+  useAuth()
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string[]>([])
