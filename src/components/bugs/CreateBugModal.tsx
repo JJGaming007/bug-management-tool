@@ -32,7 +32,7 @@ export function CreateBugModal({ isOpen, onClose, onCreate }: any) {
   return (
     <Dialog open onClose={onClose} className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4">
-        <Dialog.Overlay className="fixed inset-0 bg-black/60" />
+        <div className="fixed inset-0 bg-black/60" />
         <div className="relative bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md p-6 z-10">
           <button
             onClick={onClose}
@@ -47,11 +47,20 @@ export function CreateBugModal({ isOpen, onClose, onCreate }: any) {
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm text-gray-700 dark:text-gray-300">Title</label>
-              <Input value={title} onChange={setTitle} required />
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+              />
             </div>
             <div>
               <label className="block text-sm text-gray-700 dark:text-gray-300">Description</label>
-              <TextArea value={description} onChange={setDescription} rows={3} required />
+              <TextArea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                required
+              />
             </div>
             <div className="flex justify-end">
               <Button type="submit">Create</Button>

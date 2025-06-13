@@ -1,10 +1,9 @@
 'use client'
 import { FC } from 'react'
-import type { Bug } from '@/types'
 
 interface SubtaskSelectorProps {
   value?: number | null
-  bugs: Bug[]
+  bugs: { id: number; title: string }[]
   onChange: (id: number | null) => void
 }
 

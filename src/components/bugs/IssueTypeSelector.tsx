@@ -2,8 +2,8 @@
 import { FC } from 'react'
 
 interface IssueTypeSelectorProps {
-  value: 'Bug' | 'Task' | 'Story'
-  onChange: (v: 'Bug' | 'Task' | 'Story') => void
+  value: 'Bug' | 'Task' | 'Story' | 'Sub-task'
+  onChange: (v: 'Bug' | 'Task' | 'Story' | 'Sub-task') => void
 }
 
 export const IssueTypeSelector: FC<IssueTypeSelectorProps> = ({ value, onChange }) => (
@@ -17,6 +17,7 @@ export const IssueTypeSelector: FC<IssueTypeSelectorProps> = ({ value, onChange 
       <option value="Bug">Bug</option>
       <option value="Task">Task</option>
       <option value="Story">Story</option>
+      <option value="Sub-task">Sub-task</option>
     </select>
   </div>
 )

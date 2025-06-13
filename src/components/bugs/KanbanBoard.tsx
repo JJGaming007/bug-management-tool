@@ -19,7 +19,11 @@ const statuses = [
 const Card: FC<{ bug: Bug }> = ({ bug }) => {
   const [, drag] = useDrag(() => ({ type: 'BUG', item: { id: bug.id } }))
   return (
-    <div ref={drag}>
+    <div
+      ref={(node) => {
+        drag(node)
+      }}
+    >
       <IssueCard bug={bug} />
     </div>
   )
@@ -36,7 +40,9 @@ const Column: FC<{
   }))
   return (
     <div
-      ref={drop}
+      ref={(node) => {
+        drop(node)
+      }}
       className="flex-1 bg-[var(--card)] border border-[var(--border)] rounded p-4 space-y-4"
     >
       <h4 className="font-semibold mb-2">
