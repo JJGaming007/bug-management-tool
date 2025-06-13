@@ -6,6 +6,7 @@ First, install dependencies and run the development server:
 
 ```bash
 npm install
+# run this whenever you pull new changes to avoid missing modules
 ```
 
 Then start the dev server:
