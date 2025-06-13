@@ -6,7 +6,10 @@ First, install dependencies and run the development server:
 
 ```bash
 npm install
+<<<<<<< 8bhi16-codex/fix-missing--react-hot-toast--module
+=======
 # run this whenever you pull new changes to avoid missing modules
+>>>>>>> main
 ```
 
 Then start the dev server:
