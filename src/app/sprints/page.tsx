@@ -1,12 +1,20 @@
-// src/app/sprints/page.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import type { Sprint } from '@/types'
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs'
+import  RequireAuth  from '@/components/ui/RequireAuth'
 
 export default function SprintsPage() {
+  return (
+    <RequireAuth>
+      <InnerSprintsPage />
+    </RequireAuth>
+  )
+}
+
+function InnerSprintsPage() {
   const [sprints, setSprints] = useState<Sprint[]>([])
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
@@ -43,14 +51,11 @@ export default function SprintsPage() {
     }
   }
 
-  if (loading) {
-    return <div className="text-center mt-10">Loading sprints…</div>
-  }
+  if (loading) return <div className="text-center mt-10">Loading sprints…</div>
 
   return (
     <div className="flex flex-col h-full">
       <Breadcrumbs />
-
       <div className="p-4 space-y-6 bg-[var(--bg)]">
         <h1 className="text-2xl font-semibold text-[var(--text)]">Sprints</h1>
 
@@ -58,7 +63,6 @@ export default function SprintsPage() {
           onSubmit={handleCreate}
           className="flex flex-wrap gap-4 items-end bg-[var(--card)] border border-[var(--border)] p-4 rounded-lg"
         >
-          {/* Sprint Name */}
           <div className="flex-1 min-w-[200px]">
             <label className="block mb-1 text-[var(--text)]">Name</label>
             <input
@@ -69,8 +73,6 @@ export default function SprintsPage() {
               className="w-full px-3 py-2 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
             />
           </div>
-
-          {/* Start Date */}
           <div>
             <label className="block mb-1 text-[var(--text)]">Start Date</label>
             <input
@@ -80,8 +82,6 @@ export default function SprintsPage() {
               className="px-3 py-2 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
             />
           </div>
-
-          {/* End Date */}
           <div>
             <label className="block mb-1 text-[var(--text)]">End Date</label>
             <input
@@ -91,8 +91,6 @@ export default function SprintsPage() {
               className="px-3 py-2 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
             />
           </div>
-
-          {/* Create Button */}
           <button
             type="submit"
             className="px-5 py-2 rounded-lg bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)] transition"
@@ -101,7 +99,6 @@ export default function SprintsPage() {
           </button>
         </form>
 
-        {/* Sprint List */}
         <ul className="space-y-4">
           {sprints.map((s) => (
             <li
@@ -109,7 +106,9 @@ export default function SprintsPage() {
               className="flex justify-between items-center bg-[var(--card)] border border-[var(--border)] p-4 rounded-lg"
             >
               <div>
-                <h2 className="text-lg font-semibold text-[var(--text)]">{s.name}</h2>
+                <h2 className="text-lg font-semibold text-[var(--text)]">
+                  {s.name}
+                </h2>
                 <p className="text-sm text-[var(--subtext)]">
                   {new Date(s.start_date).toLocaleDateString()} —{' '}
                   {new Date(s.end_date).toLocaleDateString()}

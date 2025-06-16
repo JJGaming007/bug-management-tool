@@ -1,27 +1,52 @@
+// src/app/providers.tsx
 'use client'
 
-import React, { ReactNode, useState } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from 'react-hot-toast'
-import { AuthProvider } from '@/lib/context/AuthContext'
-import { ThemeProvider } from '@/lib/context/ThemeContext'
+import React from 'react'
+import { ReactNode } from 'react'
+import { usePathname } from 'next/navigation'
 
-export default function Providers({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: { staleTime: 60_000 },
-        },
-      }),
-  )
+import { AuthProvider }      from '@/lib/context/AuthContext'
+import { ThemeProvider }     from '@/lib/context/ThemeContext'
+import { ReactQueryProvider } from '@/components/ReactQueryProvider'
+import { Sidebar }           from '@/components/ui/Sidebar'
+import { TopBar }            from '@/components/ui/TopBar'
+import  RequireAuth        from '@/components/ui/RequireAuth'
+
+interface ProvidersProps {
+  children: ReactNode
+}
+
+export default function Providers({ children }: ProvidersProps) {
+  const pathname   = usePathname()
+  const isAuthRoute = ['/login','/signup'].includes(pathname)
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ThemeProvider>{children}</ThemeProvider>
-      </AuthProvider>
-      <Toaster position="top-right" />
-    </QueryClientProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <ReactQueryProvider>
+          <div className="flex h-screen bg-[var(--bg)]">
+            {/* only show Sidebar/TopBar once, on protected routes */}
+            {!isAuthRoute && <Sidebar />}
+
+            <div className="flex-1 flex flex-col">
+              {!isAuthRoute && <TopBar />}
+
+              <main
+                className={
+                  isAuthRoute
+                    ? 'flex-1 flex items-center justify-center'
+                    : 'flex-1 overflow-auto p-4'
+                }
+              >
+                {isAuthRoute
+                  ? children
+                  : <RequireAuth>{children}</RequireAuth>
+                }
+              </main>
+            </div>
+          </div>
+        </ReactQueryProvider>
+      </ThemeProvider>
+    </AuthProvider>
   )
 }

@@ -1,65 +1,91 @@
-// src/components/bugs/Filters.tsx
 'use client'
 
-import { FC, useState } from 'react'
+import { FC, useEffect } from 'react'
 
-type StatusKey = 'open' | 'in_progress' | 'closed'
-interface Filters {
-  status: Record<StatusKey, boolean>
-}
 interface FiltersProps {
-  filters: Filters
-  onChange: (f: Filters) => void
+  filters: { status: { open: boolean; in_progress: boolean; closed: boolean } }
+  onChange: (f: FiltersProps['filters']) => void
+  className?: string
 }
 
-export const Filters: FC<FiltersProps> = ({ filters, onChange }) => {
-  const [collapsed, setCollapsed] = useState(false)
+export const Filters: FC<FiltersProps> = ({ filters, onChange, className = '' }) => {
+  // Keyboard shortcuts: O = open, I = in_progress, C = closed
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return
 
-  const toggle = (key: StatusKey) =>
-    onChange({
-      ...filters,
-      status: { ...filters.status, [key]: !filters.status[key] },
-    })
+      let changed = false
+      const s = { ...filters.status }
+
+      switch (e.key.toLowerCase()) {
+        case 'o':
+          s.open = !s.open
+          changed = true
+          break
+        case 'i':
+          s.in_progress = !s.in_progress
+          changed = true
+          break
+        case 'c':
+          s.closed = !s.closed
+          changed = true
+          break
+      }
+      if (changed) onChange({ status: s })
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [filters, onChange])
 
   return (
-    <aside
-      role="region"
-      aria-labelledby="filters-heading"
-      className={`
-        flex-shrink-0 bg-[var(--card)] border-r border-[var(--border)] p-4 
-        ${collapsed ? 'w-12' : 'w-56'} transition-width
-      `}
+    <div
+      className={`flex flex-col p-4 bg-[var(--card)] border border-[var(--border)] rounded ${className}`}
     >
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        aria-label={collapsed ? 'Expand filters' : 'Collapse filters'}
-        aria-expanded={!collapsed}
-        className="mb-4 text-sm focus:outline-none"
-      >
-        {collapsed ? '»' : '«'}
-      </button>
-
-      {!collapsed && (
-        <div>
-          <h2 id="filters-heading" className="font-semibold mb-2">
-            Status
-          </h2>
-          {(['open', 'in_progress', 'closed'] as StatusKey[]).map((key) => (
-            <label key={key} className="flex items-center mb-1" htmlFor={`filter-${key}`}>
-              <input
-                id={`filter-${key}`}
-                type="checkbox"
-                checked={filters.status[key]}
-                onChange={() => toggle(key)}
-                className="mr-2"
-              />
-              {key === 'in_progress'
-                ? 'In Progress'
-                : key.charAt(0).toUpperCase() + key.slice(1)}
-            </label>
-          ))}
-        </div>
-      )}
-    </aside>
+      <h3 className="mb-2 font-semibold text-[var(--text)]">Filters</h3>
+      <div className="space-y-2">
+        <label className="flex items-center text-[var(--text)]">
+          <input
+            type="checkbox"
+            checked={filters.status.open}
+            onChange={() =>
+              onChange({ status: { ...filters.status, open: !filters.status.open } })
+            }
+            className="mr-2"
+          />
+          Open
+        </label>
+        <label className="flex items-center text-[var(--text)]">
+          <input
+            type="checkbox"
+            checked={filters.status.in_progress}
+            onChange={() =>
+              onChange({
+                status: { ...filters.status, in_progress: !filters.status.in_progress },
+              })
+            }
+            className="mr-2"
+          />
+          In Progress
+        </label>
+        <label className="flex items-center text-[var(--text)]">
+          <input
+            type="checkbox"
+            checked={filters.status.closed}
+            onChange={() =>
+              onChange({ status: { ...filters.status, closed: !filters.status.closed } })
+            }
+            className="mr-2"
+          />
+          Closed
+        </label>
+      </div>
+      <p className="mt-4 text-xs text-[var(--subtext)]">
+        Shortcuts: <kbd>O</kbd>, <kbd>I</kbd>, <kbd>C</kbd>
+      </p>
+    </div>
   )
 }

@@ -1,4 +1,3 @@
-// src/components/bugs/BulkActions.tsx
 'use client'
 
 import { FC } from 'react'
@@ -17,43 +16,34 @@ export const BulkActions: FC<BulkActionsProps> = ({
   onDelete,
 }) => {
   return (
-    <div
-      role="toolbar"
-      aria-label="Bulk actions toolbar"
-      className="flex items-center justify-between bg-[var(--card)] border-b border-[var(--border)] p-4 mb-4 rounded-t"
-    >
-      <span className="text-[var(--text)]">
-        {selectedCount} selected
-      </span>
-      <div className="space-x-2">
+    <div className="flex items-center justify-between p-4 bg-[var(--card)] border-b border-[var(--border)]">
+      <span className="text-[var(--text)]">{selectedCount} selected</span>
+      <div className="flex gap-2">
         <button
           onClick={() => onChangeStatus('Open')}
-          className="px-3 py-1 rounded bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)] transition"
+          className="px-3 py-1 bg-green-500 text-white rounded"
         >
           Mark Open
         </button>
         <button
           onClick={() => onChangeStatus('In Progress')}
-          className="px-3 py-1 rounded bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)] transition"
+          className="px-3 py-1 bg-yellow-500 text-white rounded"
         >
           Mark In Progress
         </button>
         <button
           onClick={() => onChangeStatus('Closed')}
-          className="px-3 py-1 rounded bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)] transition"
+          className="px-3 py-1 bg-gray-500 text-white rounded"
         >
           Mark Closed
         </button>
         <button
           onClick={onDelete}
-          className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700 transition"
+          className="px-3 py-1 bg-red-600 text-white rounded"
         >
           Delete
         </button>
-        <button
-          onClick={onClear}
-          className="px-3 py-1 text-[var(--subtext)] hover:underline"
-        >
+        <button onClick={onClear} className="px-3 py-1 bg-[var(--border)] rounded">
           Clear
         </button>
       </div>

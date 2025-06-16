@@ -4,8 +4,17 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { IssueCard } from '@/components/bugs/IssueCard'
 import type { Bug } from '@/types'
+import RequireAuth from '@/components/ui/RequireAuth'
 
 export default function BacklogPage() {
+  return (
+    <RequireAuth>
+      <InnerBacklogPage />
+    </RequireAuth>
+  )
+}
+
+function InnerBacklogPage() {
   const [bugs, setBugs] = useState<Bug[]>([])
   const [loading, setLoading] = useState(true)
 

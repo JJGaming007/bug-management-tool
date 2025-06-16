@@ -1,53 +1,64 @@
+// src/lib/context/AuthContext.tsx
 'use client'
-import { createContext, useState, useEffect, ReactNode, useContext } from 'react'
+
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { supabase } from '@/lib/supabase/client'
+import type { Session, User } from '@supabase/supabase-js'
 
 interface AuthContextType {
-  user: any
-  signIn: () => void
-  login: (email: string, password: string) => Promise<void>
-  signOut: () => void
+  session: Session | null | undefined
+  user: User | null
+  signIn: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string) => Promise<void>
+  signOut: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType | null>(null)
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<any>(null)
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null | undefined>(undefined)
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
-    const getSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-    }
-    getSession()
+    // Fetch initial session & user
+    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    supabase.auth.getUser().then(({ data }) => setUser(data.user))
 
+    // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession)
+      supabase.auth.getUser().then(({ data }) => setUser(data.user))
     })
 
+    // Clean up listener on unmount
     return () => {
       subscription.unsubscribe()
     }
   }, [])
 
-  const signIn = async () => {
-    await supabase.auth.signInWithOAuth({ provider: 'github' })
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw error
   }
 
-  const login = async (email: string, password: string) => {
-    await supabase.auth.signInWithPassword({ email, password })
+  const signUp = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signUp({ email, password })
+    if (error) throw error
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
+    setSession(null)
+    setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, signIn, login, signOut }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ session, user, signIn, signUp, signOut }}>
+      {children}
+    </AuthContext.Provider>
   )
 }
 

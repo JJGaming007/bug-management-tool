@@ -1,4 +1,3 @@
-// src/app/bugs/page.tsx
 'use client'
 
 import { useState } from 'react'
@@ -12,15 +11,24 @@ import { SkeletonCard } from '@/components/ui/SkeletonCard'
 import { NewBugModal } from '@/components/bugs/NewBugModal'
 import { supabase } from '@/lib/supabase/client'
 import type { Bug } from '@/types'
+import  RequireAuth  from '@/components/ui/RequireAuth'
 
 export default function BugsPage() {
+  return (
+    <RequireAuth>
+      <InnerBugsPage />
+    </RequireAuth>
+  )
+}
+
+function InnerBugsPage() {
   const { data: bugs = [], isLoading, error, refetch } = useBugs()
 
   const [filters, setFilters] = useState({
     status: { open: true, in_progress: true, closed: true },
   })
 
-  // Multi-select state (if you still have bulk actions)
+  // bulk‐select state
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const toggleSelect = (id: string) =>
     setSelectedIds((prev) =>
@@ -28,16 +36,14 @@ export default function BugsPage() {
     )
   const clearSelection = () => setSelectedIds([])
 
-  // Modal state
+  // New Issue modal
   const [isModalOpen, setModalOpen] = useState(false)
-
-  // When a new bug is created, close modal and refetch
   const handleCreated = (newBug: Bug) => {
     setModalOpen(false)
     refetch()
   }
 
-  // Bulk actions (if any)
+  // Bulk actions
   const bulkChangeStatus = async (newStatus: 'Open' | 'In Progress' | 'Closed') => {
     await supabase.from('bugs').update({ status: newStatus }).in('id', selectedIds)
     clearSelection()
@@ -49,15 +55,15 @@ export default function BugsPage() {
     refetch()
   }
 
-  // Apply status filters
+  // apply filters
   const filtered = bugs.filter((b) => {
-    const key = (b.status as string).toLowerCase().replace(/\s+/g, '_') as
-      | 'open'
-      | 'in_progress'
-      | 'closed'
+    const key = (b.status as string)
+      .toLowerCase()
+      .replace(/\s+/g, '_') as 'open' | 'in_progress' | 'closed'
     return filters.status[key]
   })
 
+  // loading & error states
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4">

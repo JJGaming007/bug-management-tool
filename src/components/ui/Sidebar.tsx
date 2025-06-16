@@ -2,72 +2,80 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'  // updated
-// No default import—named exports only
+import { usePathname } from 'next/navigation'
+import {
+  Home,
+  ClipboardList,
+  Calendar,
+  LayoutGrid,
+  Menu,
+  X,
+} from 'lucide-react'
 
 export function Sidebar() {
   const [open, setOpen] = useState(false)
 
   return (
-    <>
-      {/* Mobile hamburger button */}
-      <div className="md:hidden p-4">
-        <button
-          onClick={() => setOpen(true)}
-          aria-label="Open menu"
-          className="focus:outline-none"
-        >
-          <Bars3Icon className="h-6 w-6 text-[var(--text)]" /> {/* updated */}
+    <aside
+      className={`
+        fixed inset-y-0 left-0 bg-[var(--card)] border-r border-[var(--border)]
+        transform transition-transform duration-200 ease-in-out
+        ${open ? 'translate-x-0' : '-translate-x-full'}
+        sm:translate-x-0 sm:static sm:w-64
+        z-50
+      `}
+    >
+      {/* Mobile header */}
+      <div className="flex items-center justify-between p-4 sm:hidden">
+        <span className="text-lg font-bold text-[var(--text)]">Menu</span>
+        <button onClick={() => setOpen(false)}>
+          <X className="w-6 h-6 text-[var(--text)]" />
         </button>
       </div>
 
-      {/* Sidebar drawer */}
-      <aside
-        className={`
-          fixed inset-y-0 left-0 z-40 w-64
-          transform bg-[var(--card)] border-r border-[var(--border)]
-          transition-transform duration-200 ease-in-out
-          ${open ? 'translate-x-0' : '-translate-x-full'}
-          md:relative md:translate-x-0 md:shadow-none
-        `}
-      >
-        {/* Close button on mobile */}
-        <div className="flex items-center justify-between md:hidden p-4">
-          <span className="text-xl font-bold text-[var(--text)]">BugTracker</span>
-          <button
-            onClick={() => setOpen(false)}
-            aria-label="Close menu"
-            className="focus:outline-none"
-          >
-            <XMarkIcon className="h-6 w-6 text-[var(--text)]" /> {/* updated */}
-          </button>
-        </div>
+      {/* Navigation links */}
+      <nav className="flex-1 overflow-auto px-2 pb-4 space-y-1">
+        <SidebarLink href="/" icon={Home} label="Dashboard" />
+        <SidebarLink href="/bugs" icon={ClipboardList} label="Bugs" />
+        <SidebarLink href="/board" icon={LayoutGrid} label="Board" />
+        <SidebarLink href="/sprints" icon={Calendar} label="Sprints" />
+      </nav>
 
-        {/* Nav links */}
-        <nav className="p-4 space-y-4 text-lg">
-          <Link href="/dashboard" className="block hover:text-[var(--accent)]">
-            Dashboard
-          </Link>
-          <Link href="/bugs" className="block hover:text-[var(--accent)]">
-            Bugs
-          </Link>
-          <Link href="/sprints" className="block hover:text-[var(--accent)]">
-            Sprints
-          </Link>
-          <Link href="/backlog" className="block hover:text-[var(--accent)]">
-            Backlog
-          </Link>
-        </nav>
-      </aside>
+      {/* Mobile open button */}
+      <div className="p-4 sm:hidden">
+        <button onClick={() => setOpen(true)} className="flex items-center">
+          <Menu className="w-6 h-6 text-[var(--text)]" />
+          <span className="ml-2 text-[var(--text)]">Open menu</span>
+        </button>
+      </div>
+    </aside>
+  )
+}
 
-      {/* Backdrop when open on mobile */}
-      {open && (
-        <div
-          className="fixed inset-0 z-30 bg-black bg-opacity-50 md:hidden"
-          onClick={() => setOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-    </>
+function SidebarLink({
+  href,
+  icon: Icon,
+  label,
+}: {
+  href: string
+  icon: React.FC<React.SVGProps<SVGSVGElement>>
+  label: string
+}) {
+  const pathname = usePathname()
+  const isActive = pathname === href
+
+  return (
+    <Link
+      href={href}
+      className={`
+        flex items-center px-3 py-2 rounded
+        ${isActive
+          ? 'bg-[var(--accent)] text-black'
+          : 'text-[var(--text)] hover:bg-[var(--accent-hover)] hover:text-black'}
+      `}
+    >
+      <Icon className="w-5 h-5 mr-3" />
+      <span>{label}</span>
+    </Link>
   )
 }

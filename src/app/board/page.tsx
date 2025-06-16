@@ -4,22 +4,29 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import type { Bug } from '@/types'
 import { KanbanBoard } from '@/components/bugs/KanbanBoard'
+import  RequireAuth  from '@/components/ui/RequireAuth'
 
 export default function BoardPage() {
+  return (
+    <RequireAuth>
+      <InnerBoardPage />
+    </RequireAuth>
+  )
+}
+
+function InnerBoardPage() {
   const [bugs, setBugs] = useState<Bug[]>([])
   const [loading, setLoading] = useState(true)
 
-  const loadBugs = async () => {
-    const { data, error } = await supabase
+  useEffect(() => {
+    supabase
       .from('bugs')
       .select('*')
       .order('created_at', { ascending: false })
-    if (!error && data) setBugs(data)
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    loadBugs()
+      .then(({ data, error }) => {
+        if (!error && data) setBugs(data)
+        setLoading(false)
+      })
   }, [])
 
   const handleStatusChange = async (id: number, status: Bug['status']) => {

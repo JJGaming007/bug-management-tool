@@ -1,27 +1,29 @@
+// src/components/bugs/IssueTypeSelector.tsx
 'use client'
+
 import { FC } from 'react'
 
+const ISSUE_TYPES = ['Bug', 'Task', 'Story'] as const
+export type IssueType = typeof ISSUE_TYPES[number]
+
 interface Props {
-  value: string
-  onChange: (v: string) => void
+  value: IssueType
+  onChange: (v: IssueType) => void
 }
 
 export const IssueTypeSelector: FC<Props> = ({ value, onChange }) => (
   <div>
-    <label className="block mb-1 text-[var(--text)]">Issue Type</label>
+    <label className="block mb-1">Issue Type</label>
     <select
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="
-        w-full px-3 py-2 mb-4
-        bg-[var(--bg)] border border-[var(--border)]
-        text-[var(--text)] rounded-lg
-        focus:outline-none focus:ring focus:ring-[var(--accent-hover)]
-      "
+      onChange={(e) => onChange(e.target.value as IssueType)}
+      className="w-full px-3 py-2 rounded bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
     >
-      <option>Bug</option>
-      <option>Task</option>
-      <option>Story</option>
+      {ISSUE_TYPES.map((t) => (
+        <option key={t} value={t}>
+          {t}
+        </option>
+      ))}
     </select>
   </div>
 )

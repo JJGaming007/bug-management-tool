@@ -1,30 +1,42 @@
-import Link from 'next/link'
-import { supabase } from '@/lib/supabase/client'
-import { IssueDetail } from '@/components/bugs/IssueDetail'
-import { Breadcrumbs } from '@/components/ui/Breadcrumbs'
+'use client'
 
-interface PageProps {
-  params: { id: string }
+import { useEffect, useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import { supabase } from '@/lib/supabase/client'
+import  RequireAuth  from '@/components/ui/RequireAuth' 
+import { IssueDetail } from '@/components/bugs/IssueDetail'
+import type { Bug } from '@/types'
+
+export default function BugDetailPage() {
+  return (
+    <RequireAuth>
+      <InnerBugDetailPage />
+    </RequireAuth>
+  )
 }
 
-export default async function BugDetailPage({ params }: PageProps) {
-  const { data: bug, error } = await supabase
-    .from('bugs')
-    .select('*')
-    .eq('id', params.id)
-    .single()
+function InnerBugDetailPage() {
+  const pathname = usePathname() // e.g. '/bugs/[id]'
+  const id = pathname.split('/').pop()!
+  const [bug, setBug] = useState<Bug | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  if (error || !bug) {
-    return (
-      <div className="text-center mt-10 text-red-600">
-        <Breadcrumbs />
-        <p>Unable to load issue #{params.id}.</p>
-        <Link href="/bugs" className="underline mt-4 inline-block">
-          ← Back to Issues
-        </Link>
-      </div>
-    )
-  }
+  useEffect(() => {
+    if (!id) return
+    supabase
+      .from('bugs')
+      .select('*')
+      .eq('id', id)
+      .single()
+      .then(({ data, error }) => {
+        if (error) console.error(error)
+        else setBug(data)
+        setLoading(false)
+      })
+  }, [id])
+
+  if (loading) return <div>Loading issue…</div>
+  if (!bug) return <div>Issue not found.</div>
 
   return <IssueDetail bug={bug} />
 }

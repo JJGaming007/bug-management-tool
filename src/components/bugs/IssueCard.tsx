@@ -1,4 +1,3 @@
-// src/components/bugs/IssueCard.tsx
 'use client'
 
 import { FC } from 'react'
@@ -18,20 +17,23 @@ export const IssueCard: FC<IssueCardProps> = ({
   isSelected = false,
   onToggleSelect,
 }) => {
-  const createdDate = bug.created_at.slice(0, 10)
+  const createdDate = new Date(bug.created_at).toLocaleDateString()
 
   return (
     <div
-      className="relative bg-[var(--card)] border border-[var(--border)] p-4 pt-8 rounded 
-                 flex flex-col justify-between hover:shadow-md transition-shadow 
-                 cursor-pointer h-full"
+      onClick={() => onToggleSelect?.(bug.id)}
+      className={`
+        relative card flex flex-col justify-between hover:shadow-md transition-shadow cursor-pointer h-full
+        ${isSelected ? 'ring-2 ring-[var(--accent)]' : ''}
+      `}
     >
+      {/* Checkbox at top-left when bulk-select is enabled */}
       {onToggleSelect && (
         <input
           type="checkbox"
           checked={isSelected}
           onChange={() => onToggleSelect(bug.id)}
-          className="absolute top-2 left-2 w-4 h-4"
+          className="absolute top-2 left-2 w-4 h-4 z-10"
         />
       )}
 
@@ -65,8 +67,7 @@ export const IssueCard: FC<IssueCardProps> = ({
           {(bug.labels || []).map((lbl) => (
             <span
               key={lbl}
-              className="px-2 py-0.5 bg-[var(--accent)] bg-opacity-20 
-                         text-[var(--accent)] rounded"
+              className="px-2 py-0.5 bg-[var(--accent)] bg-opacity-20 text-[var(--accent)] rounded"
             >
               {lbl}
             </span>
@@ -76,8 +77,7 @@ export const IssueCard: FC<IssueCardProps> = ({
 
       <div className="mt-4 flex justify-between items-center">
         {bug.assignee ? (
-          <div className="w-6 h-6 rounded-full bg-[var(--border)] 
-                          flex items-center justify-center text-xs text-[var(--text)]">
+          <div className="w-6 h-6 rounded-full bg-[var(--border)] flex items-center justify-center text-xs text-[var(--text)]">
             {bug.assignee.charAt(0).toUpperCase()}
           </div>
         ) : (
