@@ -1,3 +1,7 @@
+export type BugStatus = "open" | "in_progress" | "resolved" | "closed";
+export type BugPriority = "low" | "medium" | "high" | "critical";
+
+
 export interface Bug {
   id: number
   title: string

@@ -1,128 +1,74 @@
+// src/app/bugs/page.tsx
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useBugs } from '@/hooks/useBugs'
-import { Filters } from '@/components/bugs/Filters'
-import { IssueCard } from '@/components/bugs/IssueCard'
-import { BulkActions } from '@/components/bugs/BulkActions'
-import { Breadcrumbs } from '@/components/ui/Breadcrumbs'
-import { SkeletonCard } from '@/components/ui/SkeletonCard'
 import { NewBugModal } from '@/components/bugs/NewBugModal'
-import { supabase } from '@/lib/supabase/client'
-import type { Bug } from '@/types'
-import  RequireAuth  from '@/components/ui/RequireAuth'
 
 export default function BugsPage() {
-  return (
-    <RequireAuth>
-      <InnerBugsPage />
-    </RequireAuth>
-  )
-}
-
-function InnerBugsPage() {
   const { data: bugs = [], isLoading, error, refetch } = useBugs()
+  const [q, setQ] = useState('')
+  const [open, setOpen] = useState(false)
 
-  const [filters, setFilters] = useState({
-    status: { open: true, in_progress: true, closed: true },
-  })
-
-  // bulk‐select state
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const toggleSelect = (id: string) =>
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase()
+    if (!s) return bugs
+    return bugs.filter((b: any) =>
+      String(b.title || '').toLowerCase().includes(s) ||
+      String(b.description || '').toLowerCase().includes(s)
     )
-  const clearSelection = () => setSelectedIds([])
-
-  // New Issue modal
-  const [isModalOpen, setModalOpen] = useState(false)
-  const handleCreated = (newBug: Bug) => {
-    setModalOpen(false)
-    refetch()
-  }
-
-  // Bulk actions
-  const bulkChangeStatus = async (newStatus: 'Open' | 'In Progress' | 'Closed') => {
-    await supabase.from('bugs').update({ status: newStatus }).in('id', selectedIds)
-    clearSelection()
-    refetch()
-  }
-  const bulkDelete = async () => {
-    await supabase.from('bugs').delete().in('id', selectedIds)
-    clearSelection()
-    refetch()
-  }
-
-  // apply filters
-  const filtered = bugs.filter((b) => {
-    const key = (b.status as string)
-      .toLowerCase()
-      .replace(/\s+/g, '_') as 'open' | 'in_progress' | 'closed'
-    return filters.status[key]
-  })
-
-  // loading & error states
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <SkeletonCard key={i} />
-        ))}
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="text-center mt-10 text-red-600">Error: {error.message}</div>
-    )
-  }
+  }, [bugs, q])
 
   return (
-    <div className="flex flex-col h-full">
-      <Breadcrumbs />
-
-      <div className="flex items-center justify-between px-4 py-2">
-        <h1 className="text-2xl font-semibold">Bugs</h1>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="px-4 py-2 bg-[var(--accent)] text-black rounded hover:bg-[var(--accent-hover)]"
-        >
-          + New Issue
-        </button>
-      </div>
-
-      {selectedIds.length > 0 && (
-        <BulkActions
-          selectedCount={selectedIds.length}
-          onClear={clearSelection}
-          onChangeStatus={bulkChangeStatus}
-          onDelete={bulkDelete}
-        />
-      )}
-
-      <div className="flex flex-1 overflow-hidden">
-        <Filters filters={filters} onChange={setFilters} />
-
-        <div className="flex-1 overflow-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
-          {filtered.map((bug) => (
-            <IssueCard
-              key={bug.id}
-              bug={bug}
-              isSelected={selectedIds.includes(bug.id)}
-              onToggleSelect={toggleSelect}
-            />
-          ))}
+    <div className="container" style={{ padding: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Bugs</h1>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn" onClick={() => setOpen(true)}>+ New Bug</button>
         </div>
       </div>
 
-      <NewBugModal
-        isOpen={isModalOpen}
-        onClose={() => setModalOpen(false)}
-        onCreated={handleCreated}
-      />
+      <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
+        <input className="input" placeholder="Search bugs…" value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        {isLoading && <div className="skeleton" style={{ height: 240 }} />}
+        {error && <div style={{ color: '#fecaca', background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.4)', padding: 12, borderRadius: 12 }}>Failed to load bugs</div>}
+
+        {!isLoading && !error && (
+          <div className="table">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Status</th>
+                  <th>Priority</th>
+                  <th>Assignee</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((b: any) => (
+                  <tr key={String(b.id)}>
+                    <td><Link href={`/bugs/${b.id}`} style={{ textDecoration: 'underline' }}>{b.title}</Link></td>
+                    <td><span className="pill">{b.status}</span></td>
+                    <td><span className="pill">{b.priority || '—'}</span></td>
+                    <td>{b.assignee || '—'}</td>
+                    <td>{new Date(b.created_at).toLocaleString()}</td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--subtext)', padding: 24 }}>No bugs match your search.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <NewBugModal isOpen={open} onClose={() => setOpen(false)} onCreated={refetch} />
     </div>
   )
 }

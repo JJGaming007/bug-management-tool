@@ -1,39 +1,34 @@
-// src/components/bugs/SubtaskSelector.tsx
 'use client'
 
 import { FC } from 'react'
 
-interface BugOption {
-  id: number
-  title: string
-}
-
+interface BugOption { id: number | string; title: string }
 interface Props {
-  value: number | null
-  bugs: BugOption[]
-  onChange: (id: number | null) => void
+  value: number | string | null
+  onChange: (id: number | string | null) => void
+  /** Accept both names to avoid breaking old callers */
+  options?: BugOption[]
+  bugs?: BugOption[]
 }
 
-export const SubtaskSelector: FC<Props> = ({
-  value,
-  bugs,
-  onChange,
-}) => (
-  <div>
-    <label className="block mb-1">Parent Issue</label>
-    <select
-      value={value ?? ''}
-      onChange={(e) =>
-        onChange(e.target.value ? Number(e.target.value) : null)
-      }
-      className="w-full px-3 py-2 rounded bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
-    >
-      <option value="">None</option>
-      {bugs.map((b) => (
-        <option key={b.id} value={b.id}>
-          {b.title} (#{b.id})
-        </option>
-      ))}
-    </select>
-  </div>
-)
+export const SubtaskSelector: FC<Props> = ({ value, onChange, options, bugs }) => {
+  const items: BugOption[] = Array.isArray(options) ? options : (Array.isArray(bugs) ? bugs : [])
+
+  return (
+    <div>
+      <label className="block mb-1" style={{ color: 'var(--subtext)' }}>Parent Task</label>
+      <select
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+        className="select"
+      >
+        <option value="">None</option>
+        {items.map((b) => (
+          <option key={String(b.id)} value={String(b.id)}>
+            {b.title} (#{b.id})
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}

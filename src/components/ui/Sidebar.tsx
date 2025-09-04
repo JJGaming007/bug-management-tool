@@ -1,81 +1,69 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+// Use only well-known Lucide icons. If an icon is ever missing, we fall back to <Square/>.
 import {
-  Home,
-  ClipboardList,
-  Calendar,
   LayoutGrid,
-  Menu,
-  X,
+  Bug,
+  ListChecks,
+  BookOpen,
+  CalendarDays,
+  User,
+  Square,
+  type LucideIcon,
 } from 'lucide-react'
 
+const nav: Array<{ href: string; label: string; icon: LucideIcon }> = [
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
+  { href: '/bugs',      label: 'Bugs',      icon: Bug },
+  { href: '/board',     label: 'Board',     icon: ListChecks },
+  { href: '/backlog',   label: 'Backlog',   icon: BookOpen },
+  { href: '/sprints',   label: 'Sprints',   icon: CalendarDays },
+  { href: '/account',   label: 'Account',   icon: User },
+]
+
 export function Sidebar() {
-  const [open, setOpen] = useState(false)
+  const pathname = usePathname()
 
   return (
     <aside
-      className={`
-        fixed inset-y-0 left-0 bg-[var(--card)] border-r border-[var(--border)]
-        transform transition-transform duration-200 ease-in-out
-        ${open ? 'translate-x-0' : '-translate-x-full'}
-        sm:translate-x-0 sm:static sm:w-64
-        z-50
-      `}
+      className="hidden md:flex h-screen sticky top-0 flex-col p-4 gap-6"
+      style={{ width: 260 }}
+      aria-label="Sidebar"
     >
-      {/* Mobile header */}
-      <div className="flex items-center justify-between p-4 sm:hidden">
-        <span className="text-lg font-bold text-[var(--text)]">Menu</span>
-        <button onClick={() => setOpen(false)}>
-          <X className="w-6 h-6 text-[var(--text)]" />
-        </button>
+      <div className="card p-4">
+        <div className="flex items-center gap-2">
+          <div className="h-2.5 w-2.5 rounded-full" style={{ background: 'var(--accent)' }} />
+          <strong style={{ letterSpacing: 0.25 }}>BugTracker</strong>
+        </div>
       </div>
 
-      {/* Navigation links */}
-      <nav className="flex-1 overflow-auto px-2 pb-4 space-y-1">
-        <SidebarLink href="/" icon={Home} label="Dashboard" />
-        <SidebarLink href="/bugs" icon={ClipboardList} label="Bugs" />
-        <SidebarLink href="/board" icon={LayoutGrid} label="Board" />
-        <SidebarLink href="/sprints" icon={Calendar} label="Sprints" />
+      <nav className="card p-2">
+        {nav.map(({ href, label, icon: Icon }) => {
+          const active = pathname?.startsWith(href)
+          // extra guard: if Icon somehow undefined, render Square
+          const SafeIcon = (Icon ?? Square) as LucideIcon
+          return (
+            <Link
+              key={href}
+              href={href}
+              className="flex items-center gap-3 px-3 py-3 rounded-lg"
+              style={{
+                color: active ? '#001018' : 'var(--text)',
+                background: active ? 'var(--accent)' : 'transparent',
+              }}
+            >
+              <SafeIcon size={18} />
+              <span className="font-semibold">{label}</span>
+            </Link>
+          )
+        })}
       </nav>
 
-      {/* Mobile open button */}
-      <div className="p-4 sm:hidden">
-        <button onClick={() => setOpen(true)} className="flex items-center">
-          <Menu className="w-6 h-6 text-[var(--text)]" />
-          <span className="ml-2 text-[var(--text)]">Open menu</span>
-        </button>
+      <div className="card p-3 text-xs" style={{ color: 'var(--subtext)' }}>
+        <div><b>Tip:</b> Use search on the Bugs page to jump fast.</div>
       </div>
     </aside>
-  )
-}
-
-function SidebarLink({
-  href,
-  icon: Icon,
-  label,
-}: {
-  href: string
-  icon: React.FC<React.SVGProps<SVGSVGElement>>
-  label: string
-}) {
-  const pathname = usePathname()
-  const isActive = pathname === href
-
-  return (
-    <Link
-      href={href}
-      className={`
-        flex items-center px-3 py-2 rounded
-        ${isActive
-          ? 'bg-[var(--accent)] text-black'
-          : 'text-[var(--text)] hover:bg-[var(--accent-hover)] hover:text-black'}
-      `}
-    >
-      <Icon className="w-5 h-5 mr-3" />
-      <span>{label}</span>
-    </Link>
   )
 }

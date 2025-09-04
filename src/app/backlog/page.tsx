@@ -8,9 +8,12 @@ import RequireAuth from '@/components/ui/RequireAuth'
 
 export default function BacklogPage() {
   return (
-    <RequireAuth>
-      <InnerBacklogPage />
-    </RequireAuth>
+    <div className="container" style={{ padding: 24 }}>
+      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Backlog</h1>
+      <div className="card" style={{ padding: 16, marginTop: 16 }}>
+        {/* your backlog content / list / filters go here */}
+      </div>
+    </div>
   )
 }
 
