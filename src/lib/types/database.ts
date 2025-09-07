@@ -33,7 +33,7 @@ export interface Database {
           bug_key: string
           title: string
           description: string
-          status: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'reopened'
+          status: 'Open' | 'Todo' | 'In Progress' | 'Dev Complete' | 'QA Verified' | 'Closed' | 'Reopened'
           priority: 'low' | 'medium' | 'high' | 'critical'
           severity: 'minor' | 'major' | 'critical' | 'blocker'
           steps_to_reproduce: string | null
@@ -56,7 +56,7 @@ export interface Database {
           bug_key?: string
           title: string
           description: string
-          status?: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'reopened'
+          status?: 'Open' | 'Todo' | 'In Progress' | 'Dev Complete' | 'QA Verified' | 'Closed' | 'Reopened'
           priority?: 'low' | 'medium' | 'high' | 'critical'
           severity?: 'minor' | 'major' | 'critical' | 'blocker'
           steps_to_reproduce?: string | null
@@ -74,7 +74,7 @@ export interface Database {
         Update: {
           title?: string
           description?: string
-          status?: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'reopened'
+          status?: 'Open' | 'Todo' | 'In Progress' | 'Dev Complete' | 'QA Verified' | 'Closed' | 'Reopened'
           priority?: 'low' | 'medium' | 'high' | 'critical'
           severity?: 'minor' | 'major' | 'critical' | 'blocker'
           steps_to_reproduce?: string | null

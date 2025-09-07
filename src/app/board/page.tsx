@@ -1,50 +1,40 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
-import type { Bug } from '@/types'
-import { KanbanBoard } from '@/components/bugs/KanbanBoard'
-import  RequireAuth  from '@/components/ui/RequireAuth'
+import KanbanBoard from '@/components/bugs/KanbanBoard'
+import { useBugs } from '@/hooks/useBugs'
 
 export default function BoardPage() {
+  const { data: bugs = [], isLoading, error, refetch } = useBugs()
+
   return (
     <div className="container" style={{ padding: 24 }}>
       <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Board</h1>
       <div className="card" style={{ padding: 16, marginTop: 16 }}>
-        <KanbanBoard />
+        {isLoading && <div className="skeleton" style={{ height: 240 }} />}
+        {error && (
+          <div
+            style={{
+              color: '#fecaca',
+              background: 'rgba(239,68,68,.1)',
+              border: '1px solid rgba(239,68,68,.4)',
+              padding: 12,
+              borderRadius: 12,
+            }}
+          >
+            Failed to load bugs
+          </div>
+        )}
+        {!isLoading && !error && (
+          <KanbanBoard
+            bugs={bugs}
+            onStatusChange={async (id, status) => {
+              // TODO: Call API or supabase to update bug status
+              console.log(`Move bug ${id} → ${status}`)
+              refetch()
+            }}
+          />
+        )}
       </div>
-    </div>
-  )
-}
-
-function InnerBoardPage() {
-  const [bugs, setBugs] = useState<Bug[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    supabase
-      .from('bugs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data) setBugs(data)
-        setLoading(false)
-      })
-  }, [])
-
-  const handleStatusChange = async (id: number, status: Bug['status']) => {
-    const { error } = await supabase.from('bugs').update({ status }).eq('id', id)
-    if (!error) {
-      setBugs((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)))
-    }
-  }
-
-  if (loading) return <div>Loading board…</div>
-
-  return (
-    <div>
-      <h1 className="text-2xl font-semibold mb-6">Board</h1>
-      <KanbanBoard bugs={bugs} onStatusChange={handleStatusChange} />
     </div>
   )
 }

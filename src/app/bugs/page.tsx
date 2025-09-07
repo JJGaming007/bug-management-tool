@@ -1,74 +1,139 @@
-// src/app/bugs/page.tsx
 'use client'
 
-import { useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useBugs } from '@/hooks/useBugs'
-import { NewBugModal } from '@/components/bugs/NewBugModal'
+import { supabase } from '@/lib/supabase/client'
+import CreateBugModal from '@/components/bugs/CreateBugModal'
+import type { Bug } from '@/types'
 
 export default function BugsPage() {
-  const { data: bugs = [], isLoading, error, refetch } = useBugs()
-  const [q, setQ] = useState('')
-  const [open, setOpen] = useState(false)
+  const [bugs, setBugs] = useState<Bug[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('All')
 
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase()
-    if (!s) return bugs
-    return bugs.filter((b: any) =>
-      String(b.title || '').toLowerCase().includes(s) ||
-      String(b.description || '').toLowerCase().includes(s)
-    )
-  }, [bugs, q])
+  useEffect(() => {
+    fetchBugs()
+  }, [])
+
+  async function fetchBugs() {
+    try {
+      setLoading(true)
+      setError(null)
+      const { data, error: supError } = await supabase
+        .from('bugs')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (supError) setError(supError.message)
+      else setBugs((data as Bug[]) || [])
+    } catch (ex: any) {
+      setError(ex?.message || 'Failed to load bugs')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredBugs = bugs.filter(bug => {
+    const matchesSearch = !searchQuery ||
+      bug.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      bug.description?.toLowerCase().includes(searchQuery.toLowerCase())
+
+    const matchesStatus = statusFilter === 'All' ||
+      bug.status?.toLowerCase() === statusFilter.toLowerCase()
+
+    return matchesSearch && matchesStatus
+  })
 
   return (
-    <div className="container" style={{ padding: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Bugs</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn" onClick={() => setOpen(true)}>+ New Bug</button>
+    <div className="content">
+      <h1>Bugs</h1>
+
+      {/* Controls Card */}
+      <div className="card row" style={{ gap: 12, justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="row" style={{ gap: 12 }}>
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="btn primary"
+          >
+            + New Bug
+          </button>
+
+          <input
+            type="text"
+            placeholder="Search bugs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="All">All Status</option>
+            <option value="New">New</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Closed">Closed</option>
+          </select>
+        </div>
+
+        <div className="text-sm text-gray-400">
+          {filteredBugs.length} of {bugs.length} bug{bugs.length !== 1 ? 's' : ''}
         </div>
       </div>
 
-      <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
-        <input className="input" placeholder="Search bugs…" value={q} onChange={(e) => setQ(e.target.value)} />
-      </div>
-
-      <div style={{ marginTop: 16 }}>
-        {isLoading && <div className="skeleton" style={{ height: 240 }} />}
-        {error && <div style={{ color: '#fecaca', background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.4)', padding: 12, borderRadius: 12 }}>Failed to load bugs</div>}
-
-        {!isLoading && !error && (
-          <div className="table">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Status</th>
-                  <th>Priority</th>
-                  <th>Assignee</th>
-                  <th>Created</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((b: any) => (
-                  <tr key={String(b.id)}>
-                    <td><Link href={`/bugs/${b.id}`} style={{ textDecoration: 'underline' }}>{b.title}</Link></td>
-                    <td><span className="pill">{b.status}</span></td>
-                    <td><span className="pill">{b.priority || '—'}</span></td>
-                    <td>{b.assignee || '—'}</td>
-                    <td>{new Date(b.created_at).toLocaleString()}</td>
-                  </tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--subtext)', padding: 24 }}>No bugs match your search.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+      {/* List Card */}
+      <div className="card">
+        {loading ? (
+          <div>Loading bugs...</div>
+        ) : error ? (
+          <div className="text-red-500">Error: {error}</div>
+        ) : filteredBugs.length === 0 ? (
+          <div>No bugs found</div>
+        ) : (
+          <ul className="col" style={{ gap: 12 }}>
+            {filteredBugs.map((bug) => (
+              <li key={bug.id} className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="col" style={{ gap: 4 }}>
+                  <Link href={`/bugs/${bug.id}`} className="text-link">
+                    <strong>{bug.title}</strong>
+                  </Link>
+                  <span className="text-sm text-gray-500">{bug.description || 'No description provided.'}</span>
+                  <div className="row" style={{ gap: 8 }}>
+                    {Array.isArray(bug.labels) && bug.labels.slice(0, 3).map((label, i) => (
+                      <span key={i} className="tag">{label}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="col" style={{ gap: 4, alignItems: 'flex-end' }}>
+                  <span className="tag">{bug.status}</span>
+                  <span className="text-sm text-gray-400">{formatDate(bug.created_at)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
-      <NewBugModal isOpen={open} onClose={() => setOpen(false)} onCreated={refetch} />
+      <CreateBugModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onCreated={() => {
+          fetchBugs()
+          setModalOpen(false)
+        }}
+      />
     </div>
   )
+}
+
+function formatDate(value: any) {
+  if (!value) return ''
+  try {
+    const d = new Date(value)
+    return d.toLocaleDateString()
+  } catch {
+    return String(value)
+  }
 }

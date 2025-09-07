@@ -1,39 +1,37 @@
+// src/components/ui/TopBar.tsx
 'use client'
 
-import { useState } from 'react'
+import React from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/context/AuthContext'
-import { BellIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 
-export function TopBar() {
-  const { user, signOut } = useAuth()
-  const [q, setQ] = useState('')
+export default function TopBar() {
+  let auth = null
+  try {
+    auth = useAuth()
+  } catch (e) {
+    // If no auth provider, fallback gracefully
+    auth = { user: { email: 'guest@example.com' }, logout: () => {} }
+  }
 
   return (
-    <header className="sticky top-0 z-40">
-      <div className="container" style={{ padding: 16 }}>
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
-            <MagnifyingGlassIcon width={18} height={18} style={{ opacity: .7 }} />
-            <input
-              className="input"
-              placeholder="Search bugs, epics, comments…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#071014', borderRadius: 8 }}>
+        <span style={{ fontWeight: 700 }}>BT</span>
+      </div>
 
-          <button className="btn secondary" title="Notifications">
-            <BellIcon width={18} height={18} />
-          </button>
+      <div className="search" role="search">
+        <input type="search" placeholder="Search bugs, epics, comments..." aria-label="Search" />
+      </div>
 
-          <div style={{ width: 1, height: 28, background: 'var(--border)' }} />
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ fontSize: 12, opacity: .8 }}>{user?.email}</div>
-            <button className="btn secondary" onClick={signOut}>Sign out</button>
-          </div>
+      <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
+        <button className="btn" aria-label="Notifications" title="Notifications">🔔</button>
+        <div className="user-pill">
+          <span style={{ fontSize: 13 }}>{auth?.user?.email ?? 'not-signed'}</span>
+          <Link href="/api/logout"><button className="btn" style={{ marginLeft: 8, fontWeight:600 }}>Sign out</button></Link>
         </div>
       </div>
-    </header>
+    </div>
   )
 }

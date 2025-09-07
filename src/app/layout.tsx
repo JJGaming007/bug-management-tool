@@ -1,17 +1,18 @@
-// app/layout.tsx
-import './globals.css'
-import Providers from './providers'
+// src/app/layout.tsx
+import "./globals.css"
+import type { Metadata } from "next"
+import Providers from "./providers"
 
-export const metadata = {
-  title: 'BugTracker',
-  description: 'A simple bug-management tool',
+export const metadata: Metadata = {
+  title: "BugTracker",
+  description: "Track bugs",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>
-        {/* Providers will do Auth, Theme, QueryClient, Sidebar, TopBar, RequireAuth */}
+    <html lang="en" className="h-full">
+      <body className="h-full">
+        {/* Providers must include AuthProvider and any global UI shell */}
         <Providers>{children}</Providers>
       </body>
     </html>

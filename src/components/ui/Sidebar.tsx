@@ -1,69 +1,44 @@
+// src/components/ui/Sidebar.tsx
 'use client'
 
+import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-// Use only well-known Lucide icons. If an icon is ever missing, we fall back to <Square/>.
-import {
-  LayoutGrid,
-  Bug,
-  ListChecks,
-  BookOpen,
-  CalendarDays,
-  User,
-  Square,
-  type LucideIcon,
-} from 'lucide-react'
 
-const nav: Array<{ href: string; label: string; icon: LucideIcon }> = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
-  { href: '/bugs',      label: 'Bugs',      icon: Bug },
-  { href: '/board',     label: 'Board',     icon: ListChecks },
-  { href: '/backlog',   label: 'Backlog',   icon: BookOpen },
-  { href: '/sprints',   label: 'Sprints',   icon: CalendarDays },
-  { href: '/account',   label: 'Account',   icon: User },
-]
-
-export function Sidebar() {
-  const pathname = usePathname()
+export default function Sidebar() {
+  const pathname = usePathname() ?? '/'
+  const items = [
+    { label: 'Dashboard', href: '/'},
+    { label: 'Bugs', href: '/bugs' },
+    { label: 'Board', href: '/board' },
+    { label: 'Backlog', href: '/backlog' },
+    { label: 'Sprints', href: '/sprints' },
+    { label: 'Account', href: '/account' },
+  ]
 
   return (
-    <aside
-      className="hidden md:flex h-screen sticky top-0 flex-col p-4 gap-6"
-      style={{ width: 260 }}
-      aria-label="Sidebar"
-    >
-      <div className="card p-4">
-        <div className="flex items-center gap-2">
-          <div className="h-2.5 w-2.5 rounded-full" style={{ background: 'var(--accent)' }} />
-          <strong style={{ letterSpacing: 0.25 }}>BugTracker</strong>
-        </div>
+    <div>
+      <div className="brand">
+        <div className="dot" aria-hidden />
+        <div className="text" style={{ fontWeight:700, fontSize: 18 }}>BugTracker</div>
       </div>
 
-      <nav className="card p-2">
-        {nav.map(({ href, label, icon: Icon }) => {
-          const active = pathname?.startsWith(href)
-          // extra guard: if Icon somehow undefined, render Square
-          const SafeIcon = (Icon ?? Square) as LucideIcon
+      <nav aria-label="Main Navigation">
+        {items.map(i => {
+          const active = pathname === i.href || pathname?.startsWith(i.href + '/')
           return (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center gap-3 px-3 py-3 rounded-lg"
-              style={{
-                color: active ? '#001018' : 'var(--text)',
-                background: active ? 'var(--accent)' : 'transparent',
-              }}
-            >
-              <SafeIcon size={18} />
-              <span className="font-semibold">{label}</span>
+            <Link key={i.href} href={i.href} className={`nav-item ${active ? 'active' : ''}`}>
+              <span style={{ width: 26, textAlign: 'center', opacity: 0.9 }}>{i.label[0]}</span>
+              <span>{i.label}</span>
             </Link>
           )
         })}
       </nav>
 
-      <div className="card p-3 text-xs" style={{ color: 'var(--subtext)' }}>
-        <div><b>Tip:</b> Use search on the Bugs page to jump fast.</div>
+      <div className="tip" aria-hidden>
+        <strong style={{ display: 'block', marginBottom: 8 }}>Tip</strong>
+        Use search on the Bugs page to jump fast.
       </div>
-    </aside>
+    </div>
   )
 }
