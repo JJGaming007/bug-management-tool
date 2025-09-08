@@ -1,3 +1,4 @@
+// src/components/bugs/CreateBugModal.tsx
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
@@ -12,161 +13,164 @@ type Props = {
   onCreated?: (created?: Bug) => void
 }
 
+const ATTACHMENT_BUCKET = 'bug-attachments' // adjust to your storage bucket
+
 export default function CreateBugModal({ isOpen, onClose, onCreated }: Props) {
   const { user } = (useAuth() as { user: any }) || { user: null }
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [stepsToReproduce, setStepsToReproduce] = useState('')
+  const [expectedResult, setExpectedResult] = useState('')
+  const [actualResult, setActualResult] = useState('')
+  const [environment, setEnvironment] = useState('')
+  const [device, setDevice] = useState('')
   const [labelsText, setLabelsText] = useState('')
-  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium')
+  const [priority, setPriority] = useState<'low'|'medium'|'high'>('medium')
+  const [severity, setSeverity] = useState<'minor'|'major'|'critical'>('major')
   const [dueDate, setDueDate] = useState('')
+  const [assigneeId, setAssigneeId] = useState<string | null>(null)
+  const [sprintId, setSprintId] = useState<string | null>(null)
+  const [files, setFiles] = useState<FileList | null>(null)
+
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [mounted, setMounted] = useState(false)
+
+  const [profiles, setProfiles] = useState<{id:string; full_name?:string|null; email?:string|null}[]>([])
+  const [sprints, setSprints] = useState<any[]>([])
 
   useEffect(() => {
-    setMounted(true)
-    return () => setMounted(false)
-  }, [])
-
-  // prevent background scroll while modal is open
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = prev
+    // load selectable profiles & sprints for modal when it opens
+    async function load() {
+      try {
+        const { data: profs } = await supabase.from('profiles').select('id, full_name, email').order('full_name', { ascending: true })
+        setProfiles(profs || [])
+        const { data: s } = await supabase.from('sprints').select('id, name').order('name', { ascending: true })
+        setSprints(s || [])
+      } catch (e) {
+        // ignore silently
+      }
     }
-    return () => {
-      document.body.style.overflow = prev
-    }
+    if (isOpen) load()
   }, [isOpen])
 
-  // close on Escape
+  // prevent background scroll while modal open
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && isOpen) onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [isOpen, onClose])
+    const prev = document.body.style.overflow
+    if (isOpen) document.body.style.overflow = 'hidden'
+    else document.body.style.overflow = prev
+    return () => { document.body.style.overflow = prev }
+  }, [isOpen])
 
+  // clear when closed
   useEffect(() => {
     if (!isOpen) {
-      setTitle('')
-      setDescription('')
-      setLabelsText('')
-      setPriority('medium')
-      setDueDate('')
-      setError(null)
-      setBusy(false)
+      setTitle(''); setDescription(''); setStepsToReproduce(''); setExpectedResult(''); setActualResult('')
+      setEnvironment(''); setDevice(''); setLabelsText(''); setPriority('medium'); setSeverity('major')
+      setDueDate(''); setAssigneeId(null); setSprintId(null); setFiles(null); setError(null)
     }
   }, [isOpen])
 
   const labels = useMemo(
-    () =>
-      labelsText
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean),
+    () => labelsText.split(',').map(s => s.trim()).filter(Boolean),
     [labelsText]
   )
 
-  /**
-   * Try inserting payload. If supabase complains about missing schema columns,
-   * remove those optional columns from payload and retry once.
-   *
-   * Optional fields handled: labels, due_date, reporter_email
-   */
-  async function safeInsert(payload: Record<string, any>) {
-    // first attempt
+  async function safeInsertBug(payload: Record<string, any>) {
+    const optionalFields = ['labels','due_date','reporter_email','sprint_id','assignee_id','severity','environment','device','steps_to_reproduce','expected_result','actual_result']
     const { data, error: supError } = await supabase.from('bugs').insert([payload]).select().single()
     if (!supError) return { data, error: null }
-
-    const message = (supError.message || '').toLowerCase()
-
-    // Optional fields to tolerate if missing in DB schema
-    const optionalFields = ['labels', 'due_date', 'reporter_email']
-    const fieldsMentioned: string[] = []
-
+    const msg = (supError.message || '').toLowerCase()
+    const toRemove: string[] = []
     for (const f of optionalFields) {
-      // Look for common error phrasing referencing the missing column
-      // e.g. "Could not find the 'labels' column of 'bugs' in the schema cache"
-      if (
-        message.includes(`'${f}'`) ||
-        message.includes(`${f} column`) ||
-        message.includes(`could not find the ${f}`) ||
-        message.includes(`${f} of 'bugs'`)
-      ) {
-        fieldsMentioned.push(f)
-      }
+      if (msg.includes(f)) toRemove.push(f)
     }
-
-    if (fieldsMentioned.length === 0) {
-      // Not a schema-missing error we can auto-fix
-      return { data: null, error: supError }
-    }
-
-    // Remove the offending fields and retry once
+    if (toRemove.length === 0) return { data: null, error: supError }
     const cleaned = { ...payload }
-    for (const f of fieldsMentioned) {
-      if (f in cleaned) delete cleaned[f]
-    }
-
+    for (const f of toRemove) delete cleaned[f]
     const retry = await supabase.from('bugs').insert([cleaned]).select().single()
-    if (retry.error) {
-      // return the retry error (if still failing)
-      return { data: null, error: retry.error }
-    }
+    if (retry.error) return { data: null, error: retry.error }
     return { data: retry.data, error: null }
   }
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleCreate(e?: React.FormEvent) {
+    e?.preventDefault()
     setError(null)
+    if (!title.trim()) { setError('Title required'); return }
+    if (!description.trim()) { setError('Description required'); return }
+    if (!user?.id) { setError('You must be signed in to create a bug'); return }
 
-    if (!title.trim()) {
-      setError('Title is required')
-      return
-    }
-    if (!description.trim()) {
-      setError('Description is required')
-      return
-    }
-
-    // Ensure we have a signed-in user and a reporter id for NOT NULL constraint
-    if (!user?.id) {
-      setError('You must be signed in to create a bug.')
-      return
-    }
-
-    const payload: any = {
-      title: title.trim(),
-      description: description.trim(),
-      // default to "Open" to match your DB enum (avoid "new")
-      status: 'Open',
-      priority,
-      // include the reporter id (satisfy NOT NULL constraint)
-      reporter_id: user.id,
-    }
-
-    // include optional fields in payload if provided
-    if (dueDate) payload.due_date = dueDate
-    if (labels.length) payload.labels = labels
-    // reporter_email kept as optional (some schemas may have it)
-    if (user?.email) payload.reporter_email = user.email
-
+    setBusy(true)
     try {
-      setBusy(true)
+      const payload: any = {
+        title: title.trim(),
+        description: description.trim(),
+        status: 'Open',
+        priority,
+        severity,
+        reporter_id: user.id,
+      }
+      if (labels.length) payload.labels = labels
+      if (dueDate) payload.due_date = dueDate
+      if (assigneeId) payload.assignee_id = assigneeId
+      if (sprintId) payload.sprint_id = sprintId
+      if (environment) payload.environment = environment
+      if (device) payload.device = device
+      if (stepsToReproduce) payload.steps_to_reproduce = stepsToReproduce
+      if (expectedResult) payload.expected_result = expectedResult
+      if (actualResult) payload.actual_result = actualResult
+      if (user.email) payload.reporter_email = user.email
 
-      const { data, error: insertError } = await safeInsert(payload)
-
+      const { data: bugData, error: insertError } = await safeInsertBug(payload)
       if (insertError) {
-        // Provide a friendly message but show supabase text for debugging
         setError(insertError.message || 'Failed to create bug')
+        setBusy(false)
         return
       }
 
-      onCreated?.(data as Bug)
+      const createdBug = bugData as Bug
+
+      // record creation activity
+      await supabase.from('bug_activities').insert({
+        bug_id: createdBug.id,
+        actor_id: user.id,
+        action: 'created_bug',
+        metadata: { title: createdBug.title, priority, severity }
+      }).catch(()=>{})
+
+      // upload attachments (if any)
+      if (files && files.length > 0) {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i]
+          const path = `${createdBug.id}/${Date.now()}_${file.name}`
+          const { error: upErr } = await supabase.storage.from(ATTACHMENT_BUCKET).upload(path, file)
+          if (upErr) {
+            console.error('upload error', upErr)
+            setError(prev => prev ? prev + '; ' + upErr.message : 'Upload failed: ' + upErr.message)
+            continue
+          }
+          const { error: metaErr } = await supabase.from('bug_attachments').insert({
+            bug_id: createdBug.id,
+            filename: file.name,
+            file_path: path,
+            file_size: file.size,
+            mime_type: file.type,
+            uploaded_by: user.id
+          })
+          if (metaErr) {
+            console.error('metadata insert error', metaErr)
+            setError(prev => prev ? prev + '; ' + metaErr.message : 'Failed saving attachment metadata')
+          } else {
+            await supabase.from('bug_activities').insert({
+              bug_id: createdBug.id,
+              actor_id: user.id,
+              action: 'uploaded_attachment',
+              metadata: { filename: file.name }
+            }).catch(()=>{})
+          }
+        }
+      }
+
+      onCreated?.(createdBug)
       onClose()
     } catch (ex: any) {
       setError(ex?.message || 'Unexpected error')
@@ -175,205 +179,140 @@ export default function CreateBugModal({ isOpen, onClose, onCreated }: Props) {
     }
   }
 
-  if (!isOpen || !mounted) return null
+  // EARLY RETURNS:
+  // if modal is closed, nothing to render
+  if (!isOpen) return null
 
-  const modal = (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center"
-      aria-modal="true"
-      role="dialog"
-      onMouseDown={(e) => {
-        // close when clicking on the overlay (but not when clicking inside the panel)
-        if (e.target === e.currentTarget) onClose()
-      }}
-      style={{ outline: 'none' }}
-    >
-      {/* overlay */}
+  // guard against SSR / env without document
+  if (typeof window === 'undefined' || typeof document === 'undefined') return null
+
+  // debug helper: shows up in console when modal render path runs
+  // remove when done debugging
+  // eslint-disable-next-line no-console
+  console.log('CreateBugModal render (isOpen=true)')
+
+  const modalContent = (
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center" aria-modal="true" role="dialog">
       <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.6)',
-        }}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+        aria-label="Close modal"
       />
-
-      {/* panel: absolutely centered and independent of parent stacking contexts */}
-      <div
-        role="document"
-        style={{
-          position: 'fixed',
-          left: '50%',
-          top: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 10001,
-          width: 'min(880px, 96%)',
-          maxHeight: '90vh',
-          overflow: 'auto',
-          borderRadius: 14,
-          boxShadow: '0 18px 40px rgba(2,6,23,0.8)',
-          background: 'linear-gradient(180deg, rgba(10,14,18,0.98), rgba(8,10,12,0.98))',
-          border: '1px solid rgba(255,255,255,0.03)',
-        }}
-      >
+      <div className="relative w-full max-w-3xl mx-4 bg-[linear-gradient(180deg,rgba(10,14,18,0.98),rgba(8,10,12,0.98))] border border-white/5 rounded-2xl shadow-xl overflow-auto max-h-[90vh]">
         {/* header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 22px', borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-          <h3 style={{ margin: 0, color: '#e6eef2' }}>Create Bug</h3>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            type="button"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#c9d6da',
-              fontSize: 18,
-              cursor: 'pointer',
-              padding: 6,
-              borderRadius: 8,
-            }}
-          >
-            ✕
-          </button>
+        <div className="px-6 py-4 border-b border-white/6 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-slate-100">Create Bug</h3>
+          <button onClick={onClose} className="text-slate-300 hover:text-white rounded-md p-1">✕</button>
         </div>
 
         {/* body */}
-        <form onSubmit={handleCreate} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {error && (
-            <div style={{ background: 'rgba(255, 13, 13, 0.06)', color: '#ffb3b3', padding: 10, borderRadius: 8 }}>
-              {error}
+        <form onSubmit={handleCreate} className="p-6 space-y-4">
+          {error && <div className="bg-rose-900/20 border border-rose-800 text-rose-200 rounded-md p-3">{error}</div>}
+
+          <div>
+            <label className="text-sm text-slate-300">Title *</label>
+            <input className="mt-1 w-full px-3 py-2 rounded-lg bg-white/5 border border-white/6 text-slate-100"
+              value={title} onChange={(e)=>setTitle(e.target.value)} disabled={busy} />
+          </div>
+
+          <div>
+            <label className="text-sm text-slate-300">Description *</label>
+            <textarea className="mt-1 w-full px-3 py-2 rounded-lg bg-white/5 border border-white/6 text-slate-100" rows={4}
+              value={description} onChange={(e)=>setDescription(e.target.value)} disabled={busy} />
+          </div>
+
+          {/* rest of the form (same as before) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-slate-300">Steps to reproduce</label>
+              <textarea className="mt-1 w-full px-3 py-2 rounded-lg bg-white/5 border border-white/6 text-slate-100" rows={3}
+                value={stepsToReproduce} onChange={(e)=>setStepsToReproduce(e.target.value)} />
             </div>
-          )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ color: '#9fb1b6', fontSize: 13 }}>Title *</label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Short descriptive title"
-              disabled={busy}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: 8,
-                background: 'rgba(255,255,255,0.02)',
-                color: '#e6eef2',
-                border: '1px solid rgba(255,255,255,0.03)',
-              }}
-            />
+            <div>
+              <label className="text-sm text-slate-300">Environment</label>
+              <input className="mt-1 w-full px-3 py-2 rounded-lg bg-white/5 border border-white/6 text-slate-100"
+                value={environment} onChange={(e)=>setEnvironment(e.target.value)} />
+            </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ color: '#9fb1b6', fontSize: 13 }}>Description *</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={6}
-              placeholder="Describe the bug, steps to reproduce..."
-              disabled={busy}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: 8,
-                background: 'rgba(255,255,255,0.02)',
-                color: '#e6eef2',
-                border: '1px solid rgba(255,255,255,0.03)',
-                resize: 'vertical',
-              }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ color: '#9fb1b6', fontSize: 13 }}>Labels (comma separated)</label>
-            <input
-              value={labelsText}
-              onChange={(e) => setLabelsText(e.target.value)}
-              placeholder="ui, android, high-priority"
-              disabled={busy}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: 8,
-                background: 'rgba(255,255,255,0.02)',
-                color: '#e6eef2',
-                border: '1px solid rgba(255,255,255,0.03)',
-              }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ color: '#9fb1b6', fontSize: 13 }}>Priority</label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as any)}
-                disabled={busy}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: 8,
-                  background: 'rgba(255,255,255,0.02)',
-                  color: '#e6eef2',
-                  border: '1px solid rgba(255,255,255,0.03)',
-                }}
-              >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm text-slate-300">Priority</label>
+              <select className="mt-1 w-full px-3 py-2 rounded-lg bg-white/5 border border-white/6 text-slate-100"
+                value={priority} onChange={(e)=>setPriority(e.target.value as any)}>
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
               </select>
             </div>
-
-            <div style={{ width: 220 }}>
-              <label style={{ color: '#9fb1b6', fontSize: 13 }}>Due date</label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                disabled={busy}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: 8,
-                  background: 'rgba(255,255,255,0.02)',
-                  color: '#e6eef2',
-                  border: '1px solid rgba(255,255,255,0.03)',
-                }}
-              />
+            <div>
+              <label className="text-sm text-slate-300">Severity</label>
+              <select className="mt-1 w-full px-3 py-2 rounded-lg bg-white/5 border border-white/6 text-slate-100"
+                value={severity} onChange={(e)=>setSeverity(e.target.value as any)}>
+                <option value="minor">Minor</option>
+                <option value="major">Major</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm text-slate-300">Assignee</label>
+              <select className="mt-1 w-full px-3 py-2 rounded-lg bg-white/5 border border-white/6 text-slate-100"
+                value={assigneeId ?? ''} onChange={(e)=>setAssigneeId(e.target.value || null)}>
+                <option value="">(Unassigned)</option>
+                {profiles.map(p => <option value={p.id} key={p.id}>{p.full_name ?? p.email ?? p.id}</option>)}
+              </select>
             </div>
           </div>
 
-          {/* actions */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 6 }}>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={busy}
-              style={{
-                padding: '10px 14px',
-                borderRadius: 10,
-                background: 'transparent',
-                border: '1px solid rgba(255,255,255,0.05)',
-                color: '#cfe8e8',
-                cursor: 'pointer',
-              }}
-            >
-              Cancel
-            </button>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm text-slate-300">Due date</label>
+              <input type="date" className="mt-1 w-full px-3 py-2 rounded-lg bg-white/5 border border-white/6 text-slate-100"
+                value={dueDate} onChange={(e)=>setDueDate(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm text-slate-300">Sprint</label>
+              <select className="mt-1 w-full px-3 py-2 rounded-lg bg-white/5 border border-white/6 text-slate-100"
+                value={sprintId ?? ''} onChange={(e)=>setSprintId(e.target.value || null)}>
+                <option value="">(None)</option>
+                {sprints.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm text-slate-300">Device</label>
+              <input className="mt-1 w-full px-3 py-2 rounded-lg bg-white/5 border border-white/6 text-slate-100"
+                value={device} onChange={(e)=>setDevice(e.target.value)} />
+            </div>
+          </div>
 
-            <button
-              type="submit"
-              disabled={busy}
-              style={{
-                padding: '10px 14px',
-                borderRadius: 10,
-                background: 'linear-gradient(90deg,#06b6d4,#06b6d4)',
-                color: '#062022',
-                fontWeight: 600,
-                border: 'none',
-                cursor: busy ? 'not-allowed' : 'pointer',
-                boxShadow: '0 6px 18px rgba(6,182,212,0.16)',
-              }}
-            >
-              {busy ? 'Creating…' : 'Create'}
+          <div>
+            <label className="text-sm text-slate-300">Expected result</label>
+            <textarea className="mt-1 w-full px-3 py-2 rounded-lg bg-white/5 border border-white/6 text-slate-100" rows={2}
+              value={expectedResult} onChange={(e)=>setExpectedResult(e.target.value)} />
+          </div>
+
+          <div>
+            <label className="text-sm text-slate-300">Actual result</label>
+            <textarea className="mt-1 w-full px-3 py-2 rounded-lg bg-white/5 border border-white/6 text-slate-100" rows={2}
+              value={actualResult} onChange={(e)=>setActualResult(e.target.value)} />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-slate-300">Labels (comma separated)</label>
+              <input className="mt-1 w-full px-3 py-2 rounded-lg bg-white/5 border border-white/6 text-slate-100"
+                value={labelsText} onChange={(e)=>setLabelsText(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm text-slate-300">Attachments</label>
+              <input type="file" multiple className="mt-1 w-full text-slate-300" onChange={(e)=>setFiles(e.target.files)} />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-white/6 text-slate-200" disabled={busy}>Cancel</button>
+            <button type="submit" disabled={busy} className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-900 font-semibold shadow">
+              {busy ? 'Creating…' : 'Create Bug'}
             </button>
           </div>
         </form>
@@ -381,5 +320,5 @@ export default function CreateBugModal({ isOpen, onClose, onCreated }: Props) {
     </div>
   )
 
-  return createPortal(modal, document.body)
+  return createPortal(modalContent, document.body)
 }
