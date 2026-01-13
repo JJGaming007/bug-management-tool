@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase/client'
 import CreateBugModal from '@/components/bugs/CreateBugModal'
 import type { Bug } from '@/types'
 
@@ -60,6 +60,12 @@ export default function BugsPage() {
   }, [])
 
   async function fetchBugs() {
+    if (!isSupabaseConfigured) {
+      setLoading(false)
+      setError('Database not configured. Please set up your Supabase environment variables.')
+      return
+    }
+
     try {
       setLoading(true)
       setError(null)

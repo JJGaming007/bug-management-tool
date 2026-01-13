@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import KanbanBoard from '@/components/bugs/KanbanBoard'
 import { useBugs } from '@/hooks/useBugs'
-import { supabase } from '@/lib/supabase/client'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 
 export default function BoardPage() {
@@ -12,6 +12,10 @@ export default function BoardPage() {
 
   const handleStatusChange = useCallback(
     async (id: string | number, newStatus: string) => {
+      if (!isSupabaseConfigured) {
+        toast.error('Database not configured')
+        return
+      }
       setUpdating(id)
       try {
         // Map status key to database format

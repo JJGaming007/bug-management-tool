@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase/client'
 
 interface Bug {
   id: string | number
@@ -63,6 +63,12 @@ export default function DashboardPage() {
     const load = async () => {
       setLoading(true)
       setError(null)
+
+      if (!isSupabaseConfigured) {
+        setLoading(false)
+        return
+      }
+
       try {
         const [total, open, inprog, res, closed] = await Promise.all([
           supabase.from('bugs').select('*', { count: 'exact', head: true }),
