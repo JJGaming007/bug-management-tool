@@ -2,12 +2,59 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase/client'
+import toast from 'react-hot-toast'
 import type { Bug } from '@/types'
 
 type Profile = { id: string; full_name?: string | null; email?: string | null }
+type Comment = { id: string; bug_id: string; author_id: string; content: string; created_at: string; updated_at: string }
+type Attachment = { id: string; bug_id: string; filename: string; file_path: string; file_size: number; mime_type: string; uploaded_by: string; created_at: string }
+type Activity = { id: string; bug_id: string; user_id: string; action: string; field_name?: string; old_value?: string; new_value?: string; created_at: string }
 
 const ATTACHMENT_BUCKET = 'bug-attachments'
+
+// Icons
+const ArrowLeftIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m12 19-7-7 7-7" /><path d="M19 12H5" />
+  </svg>
+)
+
+const PaperclipIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+  </svg>
+)
+
+const MessageSquareIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+)
+
+const ActivityIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+  </svg>
+)
+
+const TrashIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+  </svg>
+)
+
+const EditIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+  </svg>
+)
+
+const DownloadIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" />
+  </svg>
+)
 
 export default function BugDetailPage() {
   const params = useParams()
@@ -15,23 +62,28 @@ export default function BugDetailPage() {
   const bugId = params?.id as string
 
   const [bug, setBug] = useState<Bug | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [profiles, setProfiles] = useState<Profile[]>([])
-  const [attachments, setAttachments] = useState<any[]>([])
-  const [comments, setComments] = useState<any[]>([])
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [comments, setComments] = useState<Comment[]>([])
+  const [activities, setActivities] = useState<Activity[]>([])
   const [newComment, setNewComment] = useState('')
-  const [commentEditId, setCommentEditId] = useState<string | null>(null)
-  const [commentEditText, setCommentEditText] = useState('')
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
+  const [editingCommentText, setEditingCommentText] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [submittingComment, setSubmittingComment] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+
+  // Editing bug fields
+  const [editingField, setEditingField] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState<string>('')
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (bugId) loadAll()
     getCurrentUser()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bugId])
 
   async function getCurrentUser() {
@@ -44,428 +96,767 @@ export default function BugDetailPage() {
   }
 
   async function loadAll() {
+    if (!isSupabaseConfigured) {
+      setLoading(false)
+      setError('Database not configured')
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
-      // bug
+      // Load bug
       const { data: b, error: be } = await supabase.from('bugs').select('*').eq('id', bugId).single()
-      if (be) { setError(prettyError(be.message)); setLoading(false); return }
+      if (be) throw be
       setBug(b as Bug)
 
-      // profiles
+      // Load profiles
       const { data: profs } = await supabase.from('profiles').select('id, full_name, email').order('full_name', { ascending: true })
       setProfiles(profs || [])
 
-      // attachments
+      // Load attachments
       const { data: atts } = await supabase.from('bug_attachments').select('*').eq('bug_id', bugId).order('created_at', { ascending: true })
-      setAttachments(atts || [])
+      setAttachments((atts as Attachment[]) || [])
 
-      // comments
+      // Load comments
       const { data: cms } = await supabase.from('bug_comments').select('*').eq('bug_id', bugId).order('created_at', { ascending: true })
-      setComments(cms || [])
-    } catch (ex: any) {
-      setError(ex?.message || 'Failed to load')
+      setComments((cms as Comment[]) || [])
+
+      // Load activities
+      const { data: acts } = await supabase.from('bug_activities').select('*').eq('bug_id', bugId).order('created_at', { ascending: false }).limit(20)
+      setActivities((acts as Activity[]) || [])
+    } catch (ex: unknown) {
+      const msg = ex instanceof Error ? ex.message : 'Failed to load bug'
+      setError(msg)
     } finally {
       setLoading(false)
     }
   }
 
-  function prettyError(msg?: string | null) {
-    if (!msg) return null
-    if (msg.toLowerCase().includes('column')) return 'A database schema mismatch occurred. Please contact an admin.'
-    if (msg.toLowerCase().includes('row-level')) return 'new row violates row-level security policy'
-    return msg
+  // Generate JIRA-style bug key
+  function getBugKey(bug: Bug): string {
+    if ((bug as Record<string, unknown>).bug_key) return String((bug as Record<string, unknown>).bug_key)
+    // Fallback: use last 4 digits of UUID
+    const idStr = String(bug.id)
+    const shortId = idStr.replace(/-/g, '').slice(-4).toUpperCase()
+    return `BUG-${shortId}`
   }
 
-  /* ------------- Attachments ------------- */
+  // Profile display
+  function getProfileName(id?: string | null): string {
+    if (!id) return 'Unassigned'
+    const p = profiles.find(x => x.id === id)
+    return p?.full_name || p?.email || id.slice(0, 8)
+  }
 
-  async function handleFileChoose(e: React.ChangeEvent<HTMLInputElement>) {
+  function getProfileInitial(id?: string | null): string {
+    const name = getProfileName(id)
+    return name[0]?.toUpperCase() || '?'
+  }
+
+  // Date formatting
+  function formatDate(value?: string): string {
+    if (!value) return ''
+    const d = new Date(value)
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  function timeAgo(value?: string): string {
+    if (!value) return ''
+    const d = new Date(value)
+    const now = new Date()
+    const diff = Math.floor((now.getTime() - d.getTime()) / 1000)
+    if (diff < 60) return 'just now'
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`
+    return formatDate(value)
+  }
+
+  // Status badge
+  function getStatusClass(status?: string): string {
+    const s = (status || '').toLowerCase()
+    if (s.includes('progress')) return 'badge-progress'
+    if (s.includes('resolved')) return 'badge-resolved'
+    if (s.includes('closed')) return 'badge-closed'
+    return 'badge-open'
+  }
+
+  function getPriorityClass(priority?: string): string {
+    const p = (priority || '').toLowerCase()
+    if (p === 'critical') return 'badge-priority-critical'
+    if (p === 'high') return 'badge-priority-high'
+    if (p === 'medium') return 'badge-priority-medium'
+    return 'badge-priority-low'
+  }
+
+  // Update bug field
+  async function updateBugField(field: string, value: string | null) {
+    if (!bug) return
+    try {
+      const { error: updateError } = await supabase
+        .from('bugs')
+        .update({ [field]: value })
+        .eq('id', bug.id)
+
+      if (updateError) throw updateError
+
+      // Log activity
+      try {
+        await supabase.from('bug_activities').insert({
+          bug_id: bug.id,
+          user_id: currentUserId,
+          action: 'updated',
+          field_name: field,
+          old_value: String((bug as Record<string, unknown>)[field] || ''),
+          new_value: String(value || ''),
+        })
+      } catch { /* ignore */ }
+
+      toast.success(`Updated ${field}`)
+      setEditingField(null)
+      loadAll()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update')
+    }
+  }
+
+  // Comments
+  async function postComment() {
+    if (!newComment.trim() || !bug || !currentUserId) return
+    setSubmittingComment(true)
+    try {
+      const { error: insertError } = await supabase.from('bug_comments').insert({
+        bug_id: bug.id,
+        author_id: currentUserId,
+        content: newComment.trim(),
+      })
+      if (insertError) throw insertError
+
+      try {
+        await supabase.from('bug_activities').insert({
+          bug_id: bug.id,
+          user_id: currentUserId,
+          action: 'commented',
+        })
+      } catch { /* ignore */ }
+
+      setNewComment('')
+      toast.success('Comment posted')
+      loadAll()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to post comment')
+    } finally {
+      setSubmittingComment(false)
+    }
+  }
+
+  async function updateComment(commentId: string) {
+    if (!editingCommentText.trim()) return
+    try {
+      const { error: updateError } = await supabase
+        .from('bug_comments')
+        .update({ content: editingCommentText.trim() })
+        .eq('id', commentId)
+
+      if (updateError) throw updateError
+
+      setEditingCommentId(null)
+      setEditingCommentText('')
+      toast.success('Comment updated')
+      loadAll()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update comment')
+    }
+  }
+
+  async function deleteComment(commentId: string) {
+    if (!confirm('Delete this comment?')) return
+    try {
+      const { error: deleteError } = await supabase.from('bug_comments').delete().eq('id', commentId)
+      if (deleteError) throw deleteError
+      toast.success('Comment deleted')
+      loadAll()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete comment')
+    }
+  }
+
+  // Attachments
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files
-    if (!files || files.length === 0 || !bug) return
+    if (!files || files.length === 0 || !bug || !currentUserId) return
     setUploading(true)
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
         const path = `${bug.id}/${Date.now()}_${file.name}`
-        const up = await supabase.storage.from(ATTACHMENT_BUCKET).upload(path, file)
-        if (up.error) {
-          setError('Upload failed: ' + up.error.message)
+        const { error: uploadError } = await supabase.storage.from(ATTACHMENT_BUCKET).upload(path, file)
+        if (uploadError) {
+          toast.error(`Failed to upload ${file.name}`)
           continue
         }
 
-        // record metadata; uploaded_by will be enforced by RLS to equal auth.uid()
-        const { data: authUser } = await supabase.auth.getUser()
-        const userId = authUser?.user?.id ?? null
         await supabase.from('bug_attachments').insert({
           bug_id: bug.id,
           filename: file.name,
           file_path: path,
           file_size: file.size,
           mime_type: file.type,
-          uploaded_by: userId
+          uploaded_by: currentUserId,
         })
 
-        // activity log (best-effort)
-        await supabase.from('bug_activities').insert({
-          bug_id: bug.id,
-          actor_id: userId,
-          action: 'uploaded_attachment',
-          metadata: { filename: file.name }
-        }).catch(() => {})
+        try {
+          await supabase.from('bug_activities').insert({
+            bug_id: bug.id,
+            user_id: currentUserId,
+            action: 'attached_file',
+            new_value: file.name,
+          })
+        } catch { /* ignore */ }
       }
-
-      // refresh attachments
-      const { data: atts } = await supabase.from('bug_attachments').select('*').eq('bug_id', bug.id).order('created_at', { ascending: true })
-      setAttachments(atts || [])
+      toast.success('File(s) uploaded')
+      loadAll()
       if (fileInputRef.current) fileInputRef.current.value = ''
-    } catch (ex: any) {
-      setError(ex?.message || 'Upload failed')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Upload failed')
     } finally {
       setUploading(false)
     }
   }
 
-  async function deleteAttachment(att: any) {
+  async function deleteAttachment(att: Attachment) {
     if (!confirm(`Delete "${att.filename}"?`)) return
     try {
-      const { data: authUser } = await supabase.auth.getUser()
-      const userId = authUser?.user?.id ?? null
-
-      // delete from storage
-      const { error: delErr } = await supabase.storage.from(ATTACHMENT_BUCKET).remove([att.file_path])
-      if (delErr) {
-        setError('Failed to delete file: ' + delErr.message)
-        // still attempt to delete metadata
-      }
-
-      // delete metadata row (RLS should allow this if uploaded_by = auth.uid())
-      const { error: metaErr } = await supabase.from('bug_attachments').delete().eq('id', att.id)
-      if (metaErr) { setError(prettyError(metaErr.message)); return }
-
-      // activity
-      await supabase.from('bug_activities').insert({
-        bug_id: bugId,
-        actor_id: userId,
-        action: 'deleted_attachment',
-        metadata: { filename: att.filename }
-      }).catch(() => {})
-
-      // refresh list
-      const { data: atts } = await supabase.from('bug_attachments').select('*').eq('bug_id', bugId).order('created_at', { ascending: true })
-      setAttachments(atts || [])
-    } catch (ex: any) {
-      setError(ex?.message || 'Failed to delete attachment')
+      await supabase.storage.from(ATTACHMENT_BUCKET).remove([att.file_path])
+      const { error: deleteError } = await supabase.from('bug_attachments').delete().eq('id', att.id)
+      if (deleteError) throw deleteError
+      toast.success('Attachment deleted')
+      loadAll()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete')
     }
   }
 
-  function getAttachmentUrl(path: string) {
-    try {
-      const { data } = supabase.storage.from(ATTACHMENT_BUCKET).getPublicUrl(path)
-      return data.publicURL
-    } catch {
-      return null
-    }
+  function getAttachmentUrl(path: string): string {
+    const { data } = supabase.storage.from(ATTACHMENT_BUCKET).getPublicUrl(path)
+    return data.publicUrl || ''
   }
 
-  /* ------------- Comments ------------- */
-
-  async function postComment() {
-    if (!newComment.trim() || !bug) return
-    try {
-      const { data: authUser } = await supabase.auth.getUser()
-      const userid = authUser?.user?.id ?? null
-      const { error } = await supabase.from('bug_comments').insert({
-        bug_id: bug.id,
-        author_id: userid,
-        comment: newComment.trim()
-      })
-      if (error) { setError(prettyError(error.message)); return }
-
-      // activity
-      await supabase.from('bug_activities').insert({
-        bug_id: bug.id,
-        actor_id: userid,
-        action: 'posted_comment',
-        metadata: {}
-      }).catch(() => {})
-
-      setNewComment('')
-      await loadAll()
-    } catch (ex: any) {
-      setError(ex?.message || 'Failed to post comment')
-    }
+  // Render
+  if (loading) {
+    return (
+      <div>
+        <div className="skeleton" style={{ height: '32px', width: '200px', marginBottom: '24px' }} />
+        <div className="card">
+          <div className="card-body">
+            <div className="skeleton" style={{ height: '400px' }} />
+          </div>
+        </div>
+      </div>
+    )
   }
 
-  async function startEditComment(c: any) {
-    setCommentEditId(c.id)
-    setCommentEditText(c.comment)
+  if (error) {
+    return (
+      <div>
+        <div className="alert alert-error">{error}</div>
+        <button className="btn btn-secondary" onClick={() => router.back()} style={{ marginTop: '16px' }}>
+          <ArrowLeftIcon /> Back
+        </button>
+      </div>
+    )
   }
 
-  async function saveCommentEdit() {
-    if (!commentEditId) return
-    try {
-      const { data: authUser } = await supabase.auth.getUser()
-      const userid = authUser?.user?.id ?? null
-      const { error } = await supabase.from('bug_comments').update({ comment: commentEditText }).eq('id', commentEditId)
-      if (error) { setError(prettyError(error.message)); return }
-      await supabase.from('bug_activities').insert({
-        bug_id: bugId,
-        actor_id: userid,
-        action: 'edited_comment',
-        metadata: { comment_id: commentEditId }
-      }).catch(() => {})
-      setCommentEditId(null); setCommentEditText('')
-      await loadAll()
-    } catch (ex: any) {
-      setError(ex?.message || 'Failed to edit comment')
-    }
+  if (!bug) {
+    return (
+      <div>
+        <div className="alert alert-error">Bug not found</div>
+        <button className="btn btn-secondary" onClick={() => router.back()} style={{ marginTop: '16px' }}>
+          <ArrowLeftIcon /> Back
+        </button>
+      </div>
+    )
   }
 
-  async function deleteComment(c: any) {
-    if (!confirm('Delete this comment?')) return
-    try {
-      const { data: authUser } = await supabase.auth.getUser()
-      const userid = authUser?.user?.id ?? null
-      const { error } = await supabase.from('bug_comments').delete().eq('id', c.id)
-      if (error) { setError(prettyError(error.message)); return }
-
-      await supabase.from('bug_activities').insert({
-        bug_id: bugId,
-        actor_id: userid,
-        action: 'deleted_comment',
-        metadata: { comment_id: c.id }
-      }).catch(() => {})
-
-      await loadAll()
-    } catch (ex: any) {
-      setError(ex?.message || 'Failed to delete comment')
-    }
-  }
-
-  /* ------------- Render ------------- */
-
-  if (loading) return <div className="content"><div className="card">Loading…</div></div>
-  if (error) return <div className="content"><div className="card text-rose-400">{error}</div></div>
-  if (!bug) return <div className="content"><div className="card">Bug not found.</div></div>
+  const bugKey = getBugKey(bug)
 
   return (
-    <div className="content max-w-6xl mx-auto px-6 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-extrabold text-gray-100 inline-flex items-center gap-3">
-          <span>{bug.title || 'Untitled'}</span>
-        </h1>
+    <div>
+      {/* Header */}
+      <div style={{ marginBottom: '20px' }}>
+        <button
+          className="btn btn-ghost btn-sm"
+          onClick={() => router.back()}
+          style={{ marginBottom: '12px' }}
+        >
+          <ArrowLeftIcon />
+          <span>Back to Bugs</span>
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+          <span style={{
+            padding: '4px 10px',
+            background: 'var(--accent-primary)',
+            color: 'white',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '13px',
+            fontWeight: 600,
+            fontFamily: 'monospace',
+          }}>
+            {bugKey}
+          </span>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, margin: 0, flex: 1 }}>
+            {bug.title}
+          </h1>
+        </div>
       </div>
 
-      <div className="list-card p-6">
-        <div className="bug-detail">
-          <section className="bug-panel">
-            {/* header info and meta rows */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <div className="text-sm text-gray-300 mb-2">Status</div>
-                <div className="flex items-center gap-3">
-                  <span className={`badge ${bug.status?.toLowerCase().includes('progress') ? 'status-progress' : bug.status?.toLowerCase().includes('open') ? 'status-new' : ''}`}>{bug.status}</span>
-                </div>
-
-                <div className="mt-4 text-sm text-gray-300 mb-2">Priority / Severity</div>
-                <div className="flex gap-3 items-center">
-                  <span className="chip">{(bug as any).priority ?? '—'}</span>
-                  <span className="chip">{(bug as any).severity ?? '—'}</span>
-                </div>
-
-                <div className="mt-4 text-sm text-gray-400">{formatDate(bug.created_at)}</div>
-
-                <div className="mt-6 text-sm font-semibold text-gray-200 mb-2">Description</div>
-                <div className="rounded-lg bg-white/4 border border-white/6 p-4 text-slate-200 whitespace-pre-wrap">
-                  {bug.description}
-                </div>
-              </div>
-
-              <div>
-                <div className="text-sm font-semibold text-gray-200 mb-2">Details</div>
-                <div className="rounded-lg bg-white/4 border border-white/6 p-4 text-sm text-slate-100 space-y-3">
-                  <div><span className="text-gray-400">ID:</span> <span className="font-mono">{bug.id}</span></div>
-                  <div><span className="text-gray-400">Reporter:</span> {renderProfileLabel(bug, profiles)}</div>
-                  <div><span className="text-gray-400">Assignee:</span> {profileDisplay((bug as any).assignee_id, (bug as any).assignee, profiles)}</div>
-                  <div><span className="text-gray-400">Environment:</span> {(bug as any).environment ?? '—'}</div>
-                  <div><span className="text-gray-400">Device:</span> {(bug as any).device ?? '—'}</div>
-                  <div><span className="text-gray-400">Labels:</span> {(bug as any).labels?.join?.(', ') ?? '—'}</div>
-                </div>
-              </div>
+      {/* Main Layout - JIRA Style */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '20px' }}>
+        {/* Left Panel - Main Content */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Description */}
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">Description</span>
             </div>
-
-            {/* steps / expected / actual */}
-            <div className="mt-6">
-              <div className="text-sm font-semibold text-gray-200 mb-2">Steps to reproduce</div>
-              <div className="rounded-lg bg-white/4 border border-white/6 p-4 text-slate-200 whitespace-pre-wrap">{(bug as any).steps_to_reproduce ?? <span className="text-slate-400">No steps provided.</span>}</div>
+            <div className="card-body">
+              <p style={{ whiteSpace: 'pre-wrap', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                {bug.description || 'No description provided.'}
+              </p>
             </div>
+          </div>
 
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <div className="text-sm font-semibold text-gray-200 mb-2">Expected result</div>
-                <div className="rounded-lg bg-white/4 border border-white/6 p-4 text-slate-200 whitespace-pre-wrap">{(bug as any).expected_result ?? <span className="text-slate-400">—</span>}</div>
+          {/* Details Section */}
+          {((bug as Record<string, unknown>).steps_to_reproduce || (bug as Record<string, unknown>).expected_result || (bug as Record<string, unknown>).actual_result) && (
+            <div className="card">
+              <div className="card-header">
+                <span className="card-title">Bug Details</span>
               </div>
-              <div>
-                <div className="text-sm font-semibold text-gray-200 mb-2">Actual result</div>
-                <div className="rounded-lg bg-white/4 border border-white/6 p-4 text-slate-200 whitespace-pre-wrap">{(bug as any).actual_result ?? <span className="text-slate-400">—</span>}</div>
-              </div>
-            </div>
-
-            <div className="hr" />
-
-            {/* attachments */}
-            <div>
-              <div className="text-sm font-semibold text-gray-200 mb-2">Attachments</div>
-              <div className="flex items-center gap-3">
-                <input ref={fileInputRef} type="file" multiple onChange={handleFileChoose} className="text-slate-300" />
-                {uploading && <div className="text-xs text-slate-400">Uploading…</div>}
-              </div>
-
-              <div className="mt-3 space-y-2">
-                {attachments.length === 0 ? <div className="muted">No attachments</div> : attachments.map(a => (
-                  <div key={a.id} className="flex items-center justify-between bg-white/2 p-3 rounded-md">
+              <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {(bug as Record<string, unknown>).steps_to_reproduce && (
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Steps to Reproduce
+                    </label>
+                    <p style={{ marginTop: '6px', whiteSpace: 'pre-wrap', color: 'var(--text-secondary)' }}>
+                      {String((bug as Record<string, unknown>).steps_to_reproduce)}
+                    </p>
+                  </div>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  {(bug as Record<string, unknown>).expected_result && (
                     <div>
-                      <a href={getAttachmentUrl(a.file_path)} target="_blank" rel="noreferrer" className="text-sky-300 hover:underline">{a.filename}</a>
-                      <div className="text-xs text-slate-400">{a.mime_type} • {a.file_size ? `${Math.round(a.file_size/1024)} KB` : ''}</div>
+                      <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Expected Result
+                      </label>
+                      <p style={{ marginTop: '6px', color: 'var(--text-secondary)' }}>
+                        {String((bug as Record<string, unknown>).expected_result)}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {a.uploaded_by === currentUserId && (
-                        <button onClick={() => deleteAttachment(a)} className="btn text-sm">Delete</button>
-                      )}
+                  )}
+                  {(bug as Record<string, unknown>).actual_result && (
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Actual Result
+                      </label>
+                      <p style={{ marginTop: '6px', color: 'var(--text-secondary)' }}>
+                        {String((bug as Record<string, unknown>).actual_result)}
+                      </p>
                     </div>
-                  </div>
-                ))}
+                  )}
+                </div>
               </div>
             </div>
+          )}
 
-            <div className="hr" />
-
-            {/* comments */}
-            <div>
-              <div className="text-sm font-semibold text-gray-200 mb-2">Comments</div>
-              <textarea className="w-full px-3 py-2 rounded bg-white/5 border border-white/6 text-slate-200" rows={4}
-                placeholder="Write a comment..." value={newComment} onChange={(e) => setNewComment(e.target.value)} />
-              <div className="mt-2 flex items-center gap-3">
-                <button onClick={postComment} className="btn primary">Post comment</button>
-                <div className="muted">{comments.length} comment{comments.length !== 1 ? 's' : ''}</div>
-              </div>
-
-              <div className="mt-4 space-y-4">
-                {comments.length === 0 ? <div className="muted">No comments yet.</div> : comments.map(c => (
-                  <div key={c.id} className="bg-white/3 p-3 rounded-md">
-                    <div className="text-xs text-slate-400">{formatDate(c.created_at)} • {profiles.find(p => p.id === c.author_id)?.full_name ?? profiles.find(p => p.id === c.author_id)?.email ?? c.author_id}</div>
-
-                    {commentEditId === c.id ? (
-                      <>
-                        <textarea rows={3} className="w-full mt-2 px-2 py-1 bg-white/5 rounded" value={commentEditText} onChange={(e) => setCommentEditText(e.target.value)} />
-                        <div className="mt-2 flex gap-2">
-                          <button onClick={saveCommentEdit} className="btn">Save</button>
-                          <button onClick={() => { setCommentEditId(null); setCommentEditText('') }} className="btn">Cancel</button>
+          {/* Attachments */}
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <PaperclipIcon />
+                Attachments ({attachments.length})
+              </span>
+              <label className="btn btn-sm btn-secondary" style={{ cursor: 'pointer' }}>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  multiple
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                  disabled={uploading}
+                />
+                {uploading ? 'Uploading...' : 'Add Files'}
+              </label>
+            </div>
+            <div className="card-body" style={{ padding: attachments.length === 0 ? '20px' : '12px' }}>
+              {attachments.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0' }}>
+                  No attachments yet
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {attachments.map((att) => (
+                    <div
+                      key={att.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 12px',
+                        background: 'var(--surface-1)',
+                        borderRadius: 'var(--radius-md)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                        <PaperclipIcon />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <a
+                            href={getAttachmentUrl(att.file_path)}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ color: 'var(--accent-primary)', fontWeight: 500, textDecoration: 'none' }}
+                          >
+                            {att.filename}
+                          </a>
+                          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                            {Math.round(att.file_size / 1024)} KB • {timeAgo(att.created_at)}
+                          </div>
                         </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="mt-2 text-slate-200 whitespace-pre-wrap">{c.comment}</div>
-                        <div className="mt-2 flex gap-2">
-                          {c.author_id === currentUserId && (
-                            <>
-                              <button onClick={() => startEditComment(c)} className="btn">Edit</button>
-                              <button onClick={() => deleteComment(c)} className="btn">Delete</button>
-                            </>
-                          )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <a
+                          href={getAttachmentUrl(att.file_path)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn btn-sm btn-ghost"
+                          title="Download"
+                          style={{ padding: '6px' }}
+                        >
+                          <DownloadIcon />
+                        </a>
+                        {att.uploaded_by === currentUserId && (
+                          <button
+                            className="btn btn-sm btn-ghost"
+                            onClick={() => deleteAttachment(att)}
+                            title="Delete"
+                            style={{ color: '#ef4444', padding: '6px' }}
+                          >
+                            <TrashIcon />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Comments */}
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <MessageSquareIcon />
+                Comments ({comments.length})
+              </span>
+            </div>
+            <div className="card-body">
+              {/* New Comment */}
+              <div style={{ marginBottom: '20px' }}>
+                <textarea
+                  className="input"
+                  placeholder="Write a comment..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  rows={3}
+                  disabled={submittingComment}
+                />
+                <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={postComment}
+                    disabled={!newComment.trim() || submittingComment}
+                  >
+                    {submittingComment ? 'Posting...' : 'Post Comment'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Comments List */}
+              {comments.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0' }}>
+                  No comments yet. Be the first to comment!
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {comments.map((comment) => (
+                    <div key={comment.id} style={{ display: 'flex', gap: '12px' }}>
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: 'white',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {getProfileInitial(comment.author_id)}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: 600, fontSize: '13px' }}>
+                            {getProfileName(comment.author_id)}
+                          </span>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                            {timeAgo(comment.created_at)}
+                          </span>
                         </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
+                        {editingCommentId === comment.id ? (
+                          <div>
+                            <textarea
+                              className="input"
+                              value={editingCommentText}
+                              onChange={(e) => setEditingCommentText(e.target.value)}
+                              rows={2}
+                            />
+                            <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+                              <button className="btn btn-primary btn-sm" onClick={() => updateComment(comment.id)}>
+                                Save
+                              </button>
+                              <button className="btn btn-secondary btn-sm" onClick={() => setEditingCommentId(null)}>
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', marginBottom: '6px' }}>
+                              {comment.content}
+                            </p>
+                            {comment.author_id === currentUserId && (
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                  className="btn btn-ghost btn-sm"
+                                  onClick={() => {
+                                    setEditingCommentId(comment.id)
+                                    setEditingCommentText(comment.content)
+                                  }}
+                                  style={{ padding: '4px 8px', fontSize: '12px' }}
+                                >
+                                  <EditIcon /> Edit
+                                </button>
+                                <button
+                                  className="btn btn-ghost btn-sm"
+                                  onClick={() => deleteComment(comment.id)}
+                                  style={{ padding: '4px 8px', fontSize: '12px', color: '#ef4444' }}
+                                >
+                                  <TrashIcon /> Delete
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </section>
-
-          {/* sidebar */}
-          <aside className="bug-sidebar mt-6">
-            <div className="meta-field">
-              <label>Reporter</label>
-              <div className="value readonly">{renderProfileLabel(bug, profiles)}</div>
-              <div className="hint">Reporter is read-only</div>
-            </div>
-
-            <div className="meta-field">
-              <label>Assignee</label>
-              <div className="value">{profileDisplay((bug as any).assignee_id, (bug as any).assignee, profiles)}</div>
-            </div>
-
-            <div className="hr" />
-
-            <div className="meta-field">
-              <label>Activity</label>
-              <div className="details">
-                <ActivityList bugId={bugId} />
-              </div>
-            </div>
-          </aside>
+          </div>
         </div>
 
-        <div className="mt-6">
-          <button onClick={() => router.back()} className="btn">← Back</button>
+        {/* Right Panel - Sidebar */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Status & Priority */}
+          <div className="card">
+            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+                  Status
+                </label>
+                {editingField === 'status' ? (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select
+                      className="input"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      style={{ flex: 1 }}
+                    >
+                      <option value="Open">Open</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Resolved">Resolved</option>
+                      <option value="Closed">Closed</option>
+                    </select>
+                    <button className="btn btn-sm btn-primary" onClick={() => updateBugField('status', editValue)}>Save</button>
+                    <button className="btn btn-sm btn-secondary" onClick={() => setEditingField(null)}>Cancel</button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => { setEditingField('status'); setEditValue(bug.status || 'Open') }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <span className={`badge ${getStatusClass(bug.status)}`}>{bug.status || 'Open'}</span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+                  Priority
+                </label>
+                {editingField === 'priority' ? (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select
+                      className="input"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      style={{ flex: 1 }}
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                    <button className="btn btn-sm btn-primary" onClick={() => updateBugField('priority', editValue)}>Save</button>
+                    <button className="btn btn-sm btn-secondary" onClick={() => setEditingField(null)}>Cancel</button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => { setEditingField('priority'); setEditValue((bug as Record<string, unknown>).priority as string || 'medium') }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <span className={`badge ${getPriorityClass((bug as Record<string, unknown>).priority as string)}`}>
+                      {((bug as Record<string, unknown>).priority as string) || 'Medium'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+                  Assignee
+                </label>
+                {editingField === 'assignee_id' ? (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select
+                      className="input"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      style={{ flex: 1 }}
+                    >
+                      <option value="">Unassigned</option>
+                      {profiles.map((p) => (
+                        <option key={p.id} value={p.id}>{p.full_name || p.email || p.id}</option>
+                      ))}
+                    </select>
+                    <button className="btn btn-sm btn-primary" onClick={() => updateBugField('assignee_id', editValue || null)}>Save</button>
+                    <button className="btn btn-sm btn-secondary" onClick={() => setEditingField(null)}>Cancel</button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => { setEditingField('assignee_id'); setEditValue((bug as Record<string, unknown>).assignee_id as string || '') }}
+                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    <div
+                      style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        background: (bug as Record<string, unknown>).assignee_id ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' : 'var(--surface-2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        color: 'white',
+                      }}
+                    >
+                      {getProfileInitial((bug as Record<string, unknown>).assignee_id as string)}
+                    </div>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      {getProfileName((bug as Record<string, unknown>).assignee_id as string)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Details */}
+          <div className="card">
+            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Reporter</span>
+                <span style={{ color: 'var(--text-primary)' }}>
+                  {getProfileName((bug as Record<string, unknown>).reporter_id as string)}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Created</span>
+                <span style={{ color: 'var(--text-primary)' }}>{formatDate(bug.created_at)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Updated</span>
+                <span style={{ color: 'var(--text-primary)' }}>{formatDate((bug as Record<string, unknown>).updated_at as string)}</span>
+              </div>
+              {(bug as Record<string, unknown>).environment && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Environment</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{String((bug as Record<string, unknown>).environment)}</span>
+                </div>
+              )}
+              {(bug as Record<string, unknown>).device && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Device</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{String((bug as Record<string, unknown>).device)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Activity */}
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+                <ActivityIcon />
+                Activity
+              </span>
+            </div>
+            <div className="card-body" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+              {activities.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0', fontSize: '13px' }}>
+                  No activity yet
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {activities.map((act) => (
+                    <div key={act.id} style={{ fontSize: '12px' }}>
+                      <div style={{ color: 'var(--text-muted)' }}>{timeAgo(act.created_at)}</div>
+                      <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        <span style={{ fontWeight: 500 }}>{getProfileName(act.user_id)}</span>
+                        {' '}{act.action}
+                        {act.field_name && (
+                          <span style={{ color: 'var(--text-muted)' }}>
+                            {' '}{act.field_name}: {act.old_value || '(empty)'} → {act.new_value || '(empty)'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  )
-}
-
-/* small helpers */
-
-function renderProfileLabel(bug: any, profiles: Profile[]) {
-  const reporterId = bug?.reporter_id
-  const reporterEmail = bug?.reporter_email ?? bug?.reporter
-  if (reporterId) {
-    const p = profiles.find(x => x.id === reporterId)
-    return p ? (p.full_name ?? p.email ?? p.id) : (reporterEmail ?? 'Unknown')
-  }
-  return reporterEmail ?? 'Unknown'
-}
-
-function profileDisplay(assigneeId?: string | null, fallback?: string | null, profiles: Profile[] = []) {
-  if (assigneeId) {
-    const p = profiles.find((x) => x.id === assigneeId)
-    if (p) return p.full_name ?? p.email ?? p.id
-    return fallback ?? assigneeId
-  }
-  return fallback ?? 'Unassigned'
-}
-
-function formatDate(value: any) {
-  if (!value) return ''
-  try {
-    const d = new Date(value)
-    return d.toLocaleString()
-  } catch {
-    return String(value)
-  }
-}
-
-/* Activity list (simple, read-only) */
-function ActivityList({ bugId }: { bugId: string }) {
-  const [acts, setActs] = useState<any[]>([])
-  useEffect(() => {
-    let mounted = true
-    async function load() {
-      const { data } = await supabase.from('bug_activities').select('id, bug_id, actor_id, action, metadata, created_at').eq('bug_id', bugId).order('created_at', { ascending: false }).limit(10)
-      if (mounted) setActs(data || [])
-    }
-    load()
-    return () => { mounted = false }
-  }, [bugId])
-  if (!acts || acts.length === 0) return <div className="muted">No activity yet.</div>
-  return (
-    <div className="space-y-2">
-      {acts.map(a => (
-        <div key={a.id} className="text-xs text-slate-400">
-          <div>{formatDate(a.created_at)} — <span className="text-slate-200">{a.action}</span></div>
-          {a.metadata && <pre className="text-[11px] text-slate-400 mt-1">{JSON.stringify(a.metadata)}</pre>}
-        </div>
-      ))}
     </div>
   )
 }

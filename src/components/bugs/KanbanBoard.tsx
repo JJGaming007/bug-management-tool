@@ -1,10 +1,10 @@
-// src/components/bugs/KanbanBoard.tsx
 'use client'
 
-import React from 'react'
-import type { MouseEvent } from 'react'
+import React, { useCallback } from 'react'
+import { useDrag, useDrop } from 'react-dnd'
+import { useRouter } from 'next/navigation'
 
-type Bug = {
+interface Bug {
   id: string | number
   title: string
   status?: string | null
@@ -13,103 +13,137 @@ type Bug = {
   created_at?: string
 }
 
-type Status = { key: string; label: string; color?: string }
+interface Status {
+  key: string
+  label: string
+  color: string
+}
 
-export default function KanbanBoard({
-  bugs = [], // << safe default: never undefined
-  statuses = [
-    { key: 'open', label: 'Open', color: '#f97316' },
-    { key: 'in_progress', label: 'In Progress', color: '#06b6d4' },
-    { key: 'resolved', label: 'Resolved', color: '#10b981' },
-    { key: 'closed', label: 'Closed', color: '#94a3b8' },
-  ] as Status[],
-  onStatusChange = async (_id: string | number, _status: string) => {},
-}: {
+const ITEM_TYPE = 'KANBAN_CARD'
+
+const defaultStatuses: Status[] = [
+  { key: 'open', label: 'Open', color: '#f97316' },
+  { key: 'in_progress', label: 'In Progress', color: '#3b82f6' },
+  { key: 'resolved', label: 'Resolved', color: '#22c55e' },
+  { key: 'closed', label: 'Closed', color: '#64748b' },
+]
+
+interface KanbanBoardProps {
   bugs?: Bug[] | null
   statuses?: Status[]
   onStatusChange?: (id: string | number, toStatus: string) => Promise<void> | void
-}) {
-  // normalize possible null
+}
+
+export default function KanbanBoard({
+  bugs = [],
+  statuses = defaultStatuses,
+  onStatusChange,
+}: KanbanBoardProps) {
   const list = Array.isArray(bugs) ? bugs : []
 
-  // simple no-data state
+  const handleDrop = useCallback(
+    async (bugId: string | number, newStatus: string) => {
+      if (onStatusChange) {
+        await onStatusChange(bugId, newStatus)
+      }
+    },
+    [onStatusChange]
+  )
+
   if (!list.length) {
     return (
-      <div className="card" style={{ padding: 20 }}>
-        <h3 style={{ margin: 0 }}>Kanban</h3>
-        <p style={{ marginTop: 8, color: 'var(--subtext)' }}>
-          There are no issues to display. Create a bug to see it appear on the board.
-        </p>
+      <div className="empty-state" style={{ minHeight: '400px' }}>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)', opacity: 0.5 }}>
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M9 3v18" />
+          <path d="M15 3v18" />
+        </svg>
+        <div className="empty-state-title">No bugs to display</div>
+        <div className="empty-state-description">
+          Create some bugs to see them on the board
+        </div>
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', overflowX: 'auto' }}>
-      {statuses.map((s) => (
-        <Column
-          key={s.key}
-          status={s}
-          bugs={list.filter((b) => (b.status ?? 'open') === s.key)}
-          onDropAsync={async (id) => {
-            try {
-              await onStatusChange(id, s.key)
-            } catch (err) {
-              // swallow - parent should show errors; keep UI robust
-              // eslint-disable-next-line no-console
-              console.error('Failed to change status', err)
-            }
-          }}
+    <div className="kanban-container">
+      {statuses.map((status) => (
+        <KanbanColumn
+          key={status.key}
+          status={status}
+          bugs={list.filter((b) => normalizeStatus(b.status) === status.key)}
+          onDrop={handleDrop}
         />
       ))}
     </div>
   )
 }
 
-/* ---------------------------------------
-   Column subcomponent (self-contained)
-   - Simple click-to-move example if you
-     don't have drag-and-drop wired yet.
-   - Renders cards with minimal details.
-----------------------------------------*/
-function Column({
-  status,
-  bugs,
-  onDropAsync,
-}: {
-  status: { key: string; label: string; color?: string }
+function normalizeStatus(status?: string | null): string {
+  const s = (status || '').toLowerCase().trim()
+  if (s.includes('open') || s === '' || s === 'new' || s === 'todo') return 'open'
+  if (s.includes('progress') || s === 'in-progress' || s === 'in progress') return 'in_progress'
+  if (s.includes('resolved') || s === 'done' || s === 'complete') return 'resolved'
+  if (s.includes('closed')) return 'closed'
+  return 'open'
+}
+
+interface KanbanColumnProps {
+  status: Status
   bugs: Bug[]
-  onDropAsync: (id: string | number) => Promise<void> | void
-}) {
+  onDrop: (bugId: string | number, newStatus: string) => void
+}
+
+function KanbanColumn({ status, bugs, onDrop }: KanbanColumnProps) {
+  const [{ isOver, canDrop }, drop] = useDrop(
+    () => ({
+      accept: ITEM_TYPE,
+      drop: (item: { id: string | number }) => {
+        onDrop(item.id, status.key)
+      },
+      collect: (monitor) => ({
+        isOver: monitor.isOver(),
+        canDrop: monitor.canDrop(),
+      }),
+    }),
+    [status.key, onDrop]
+  )
+
+  const isActive = isOver && canDrop
+
   return (
-    <div
-      style={{
-        minWidth: 320,
-        maxWidth: 360,
-        background: 'var(--card)',
-        border: '1px solid var(--border)',
-        borderRadius: 12,
-        padding: 12,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ fontWeight: 700 }}>{status.label}</div>
-          <div style={{ fontSize: 12, color: 'var(--subtext)' }}>{bugs.length} items</div>
+    <div className="kanban-column" ref={drop as unknown as React.LegacyRef<HTMLDivElement>}>
+      <div className="kanban-column-header">
+        <div className="kanban-column-title">
+          <div
+            className="kanban-column-dot"
+            style={{ backgroundColor: status.color }}
+          />
+          <span className="kanban-column-name">{status.label}</span>
         </div>
-        <div style={{ width: 10, height: 10, borderRadius: 999, background: status.color ?? 'var(--accent)' }} />
+        <span className="kanban-column-count">{bugs.length}</span>
       </div>
 
-      <div style={{ display: 'grid', gap: 8 }}>
-        {bugs.map((b) => (
-          <BoardCard key={String(b.id)} bug={b} onMove={() => onDropAsync(b.id)} />
+      <div
+        className="kanban-column-body"
+        style={{
+          background: isActive ? 'rgba(99, 102, 241, 0.05)' : 'transparent',
+          transition: 'background 0.2s ease',
+        }}
+      >
+        {bugs.map((bug) => (
+          <KanbanCard key={bug.id} bug={bug} />
         ))}
         {bugs.length === 0 && (
-          <div style={{ color: 'var(--subtext)', padding: 12, borderRadius: 8, background: '#071026' }}>
-            No issues
+          <div
+            className="kanban-drop-zone"
+            style={{
+              borderColor: isActive ? 'var(--accent-primary)' : 'var(--border-subtle)',
+              background: isActive ? 'rgba(99, 102, 241, 0.05)' : 'transparent',
+            }}
+          >
+            Drop here
           </div>
         )}
       </div>
@@ -117,31 +151,72 @@ function Column({
   )
 }
 
-/* Small card used in columns */
-function BoardCard({ bug, onMove }: { bug: Bug; onMove: (e?: MouseEvent) => void }) {
+interface KanbanCardProps {
+  bug: Bug
+}
+
+function KanbanCard({ bug }: KanbanCardProps) {
+  const router = useRouter()
+
+  const [{ isDragging }, drag] = useDrag(
+    () => ({
+      type: ITEM_TYPE,
+      item: { id: bug.id },
+      collect: (monitor) => ({
+        isDragging: monitor.isDragging(),
+      }),
+    }),
+    [bug.id]
+  )
+
+  const getPriorityColor = (priority?: string | null) => {
+    const p = (priority || '').toLowerCase()
+    if (p === 'critical') return '#ef4444'
+    if (p === 'high') return '#f97316'
+    if (p === 'medium') return '#eab308'
+    return '#6b7280'
+  }
+
+  const getInitials = (name?: string | null) => {
+    if (!name) return '?'
+    return name.substring(0, 2).toUpperCase()
+  }
+
   return (
     <div
-      className="card"
+      ref={drag as unknown as React.LegacyRef<HTMLDivElement>}
+      className={`kanban-card ${isDragging ? 'dragging' : ''}`}
+      onClick={() => router.push(`/bugs/${bug.id}`)}
       style={{
-        padding: 10,
-        cursor: 'grab',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 6,
+        opacity: isDragging ? 0.5 : 1,
+        cursor: isDragging ? 'grabbing' : 'grab',
       }}
-      // basic click handler to move card to next status if user clicks the button
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ fontWeight: 600 }}>{bug.title}</div>
-        <div style={{ fontSize: 12, color: 'var(--subtext)' }}>#{bug.id}</div>
-      </div>
-      <div style={{ fontSize: 12, color: 'var(--subtext)' }}>
-        {bug.assignee ? `Assignee: ${bug.assignee}` : 'Unassigned'}
-      </div>
-      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-        <button className="btn secondary" onClick={onMove} type="button">
-          Move
-        </button>
+      <div className="kanban-card-title">{bug.title}</div>
+      <div className="kanban-card-meta">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className="kanban-card-id">#{String(bug.id).slice(-6)}</span>
+          <div
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: getPriorityColor(bug.priority),
+            }}
+            title={`Priority: ${bug.priority || 'Medium'}`}
+          />
+        </div>
+        {bug.assignee && (
+          <div
+            className="kanban-card-avatar"
+            title={bug.assignee}
+            style={{
+              background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+            }}
+          >
+            {getInitials(bug.assignee)}
+          </div>
+        )}
       </div>
     </div>
   )
