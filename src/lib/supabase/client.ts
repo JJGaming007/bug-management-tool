@@ -23,8 +23,9 @@ function createStubClient(): SupabaseClient {
     'Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local'
   )
 
-  // Create chainable query builder stub
+  // Create chainable query builder stub that acts like a Promise
   const createQueryStub = () => {
+    const result = { data: null, error: notConfiguredError, count: null }
     const stub: Record<string, unknown> = {
       select: () => stub,
       insert: () => stub,
@@ -55,8 +56,14 @@ function createStubClient(): SupabaseClient {
       and: () => stub,
       not: () => stub,
       // Make it thenable to work with async/await
-      then: (resolve: (value: { data: null; error: Error; count: null }) => void) => {
-        resolve({ data: null, error: notConfiguredError, count: null })
+      then: (resolve: (value: typeof result) => void, reject?: (error: Error) => void) => {
+        return Promise.resolve(result).then(resolve, reject)
+      },
+      catch: (handler: (error: Error) => void) => {
+        return Promise.resolve(result).catch(handler)
+      },
+      finally: (handler: () => void) => {
+        return Promise.resolve(result).finally(handler)
       },
     }
     return stub
