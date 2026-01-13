@@ -212,9 +212,12 @@ ALTER TABLE bug_activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bug_watchers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE saved_filters ENABLE ROW LEVEL SECURITY;
 
--- Profiles: Users can view all profiles, but only edit their own
+-- Profiles: Users can view all profiles, create their own, and edit their own
 CREATE POLICY "Profiles are viewable by authenticated users" ON profiles
   FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Users can insert their own profile" ON profiles
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
 
 CREATE POLICY "Users can update their own profile" ON profiles
   FOR UPDATE TO authenticated USING (auth.uid() = id);

@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import { usePathname } from 'next/navigation'
 import { AuthProvider } from '@/lib/context/AuthContext'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { DndProvider } from 'react-dnd'
@@ -19,20 +20,32 @@ const queryClient = new QueryClient({
   },
 })
 
+// Auth pages that should not show the app shell
+const AUTH_PAGES = ['/login', '/signup', '/forgot-password', '/reset-password']
+
 export default function Providers({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const isAuthPage = AUTH_PAGES.some(page => pathname?.startsWith(page))
+
   return (
     <QueryClientProvider client={queryClient}>
       <DndProvider backend={HTML5Backend}>
         <AuthProvider>
-          <div className="app-shell">
-            <Sidebar />
-            <div className="main">
-              <TopBar />
-              <main className="page-content">
-                {children}
-              </main>
+          {isAuthPage ? (
+            // Auth pages: no sidebar/topbar
+            <>{children}</>
+          ) : (
+            // App pages: full shell
+            <div className="app-shell">
+              <Sidebar />
+              <div className="main">
+                <TopBar />
+                <main className="page-content">
+                  {children}
+                </main>
+              </div>
             </div>
-          </div>
+          )}
           <Toaster
             position="bottom-right"
             toastOptions={{
