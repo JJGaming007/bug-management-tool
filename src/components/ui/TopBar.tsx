@@ -45,6 +45,7 @@ export default function TopBar() {
   const router = useRouter()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [notificationCount] = useState(0)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   let auth: { user?: { email?: string } | null; logout?: () => void } | null = null
@@ -88,7 +89,9 @@ export default function TopBar() {
     <div className="topbar">
       <div className="topbar-left">
         <form onSubmit={handleSearch} className="topbar-search">
-          <SearchIcon />
+          <span className="topbar-search-icon">
+            <SearchIcon />
+          </span>
           <input
             type="text"
             placeholder="Search bugs..."
@@ -99,8 +102,23 @@ export default function TopBar() {
       </div>
 
       <div className="topbar-right">
-        <button className="topbar-btn" aria-label="Notifications">
+        <button
+          className="topbar-btn"
+          aria-label="Notifications"
+          style={{ position: 'relative' }}
+        >
           <BellIcon />
+          {notificationCount > 0 && (
+            <span style={{
+              position: 'absolute',
+              top: '4px',
+              right: '4px',
+              width: '8px',
+              height: '8px',
+              background: '#ef4444',
+              borderRadius: '50%',
+            }} />
+          )}
         </button>
 
         <div className="dropdown" ref={dropdownRef}>

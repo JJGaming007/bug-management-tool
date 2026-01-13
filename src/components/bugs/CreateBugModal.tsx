@@ -176,15 +176,13 @@ export default function CreateBugModal({ isOpen, onClose, onCreated }: Props) {
 
       const createdBug = bugData as Bug
 
-      await supabase
-        .from('bug_activities')
-        .insert({
+      try {
+        await supabase.from('bug_activities').insert({
           bug_id: createdBug.id,
-          actor_id: user.id,
-          action: 'created_bug',
-          metadata: { title: createdBug.title, priority, severity },
+          user_id: user.id,
+          action: 'created',
         })
-        .catch(() => {})
+      } catch { /* ignore activity log errors */ }
 
       if (files && files.length > 0) {
         for (let i = 0; i < files.length; i++) {
@@ -195,9 +193,8 @@ export default function CreateBugModal({ isOpen, onClose, onCreated }: Props) {
             console.error('upload error', upErr)
             continue
           }
-          await supabase
-            .from('bug_attachments')
-            .insert({
+          try {
+            await supabase.from('bug_attachments').insert({
               bug_id: createdBug.id,
               filename: file.name,
               file_path: path,
@@ -205,7 +202,7 @@ export default function CreateBugModal({ isOpen, onClose, onCreated }: Props) {
               mime_type: file.type,
               uploaded_by: user.id,
             })
-            .catch(() => {})
+          } catch { /* ignore attachment errors */ }
         }
       }
 
