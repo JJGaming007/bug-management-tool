@@ -42,6 +42,12 @@ export default function CreateBugModal({ isOpen, onClose, onCreated }: Props) {
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<{
+    uploading: boolean
+    current: number
+    total: number
+    currentFileName: string
+  }>({ uploading: false, current: 0, total: 0, currentFileName: '' })
 
   const [profiles, setProfiles] = useState<{ id: string; full_name?: string | null; email?: string | null }[]>([])
   const [sprints, setSprints] = useState<{ id: string; name: string }[]>([])
@@ -89,6 +95,7 @@ export default function CreateBugModal({ isOpen, onClose, onCreated }: Props) {
       setSprintId(null)
       setFiles(null)
       setError(null)
+      setUploadProgress({ uploading: false, current: 0, total: 0, currentFileName: '' })
     }
   }, [isOpen])
 
@@ -185,8 +192,10 @@ export default function CreateBugModal({ isOpen, onClose, onCreated }: Props) {
       } catch { /* ignore activity log errors */ }
 
       if (files && files.length > 0) {
+        setUploadProgress({ uploading: true, current: 0, total: files.length, currentFileName: files[0].name })
         for (let i = 0; i < files.length; i++) {
           const file = files[i]
+          setUploadProgress({ uploading: true, current: i + 1, total: files.length, currentFileName: file.name })
           const path = `${createdBug.id}/${Date.now()}_${file.name}`
           const { error: upErr } = await supabase.storage.from(ATTACHMENT_BUCKET).upload(path, file)
           if (upErr) {
@@ -204,6 +213,7 @@ export default function CreateBugModal({ isOpen, onClose, onCreated }: Props) {
             })
           } catch { /* ignore attachment errors */ }
         }
+        setUploadProgress({ uploading: false, current: files.length, total: files.length, currentFileName: '' })
       }
 
       onCreated?.(createdBug)
@@ -406,19 +416,60 @@ export default function CreateBugModal({ isOpen, onClose, onCreated }: Props) {
 
             <div className="input-group">
               <label className="input-label">Attachments</label>
-              <input
-                type="file"
-                multiple
-                onChange={(e) => setFiles(e.target.files)}
-                style={{
-                  padding: '10px',
-                  background: 'var(--surface-2)',
-                  border: '1px solid var(--border-default)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--text-secondary)',
-                  width: '100%',
-                }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <input
+                  type="file"
+                  multiple
+                  onChange={(e) => setFiles(e.target.files)}
+                  disabled={busy}
+                  style={{
+                    padding: '10px',
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-md)',
+                    color: 'var(--text-secondary)',
+                    flex: 1,
+                  }}
+                />
+                {uploadProgress.uploading && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 12px',
+                      background: 'var(--surface-3)',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: '13px',
+                      color: 'var(--text-secondary)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      style={{
+                        animation: 'spin 1s linear infinite',
+                      }}
+                    >
+                      <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                      <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" />
+                    </svg>
+                    <span>
+                      Uploading {uploadProgress.current}/{uploadProgress.total}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {files && files.length > 0 && !uploadProgress.uploading && (
+                <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  {files.length} file{files.length > 1 ? 's' : ''} selected
+                </div>
+              )}
             </div>
           </form>
         </div>
@@ -433,7 +484,11 @@ export default function CreateBugModal({ isOpen, onClose, onCreated }: Props) {
             onClick={handleCreate}
             disabled={busy}
           >
-            {busy ? 'Creating...' : 'Create Bug'}
+            {busy
+              ? uploadProgress.uploading
+                ? `Uploading ${uploadProgress.current}/${uploadProgress.total}...`
+                : 'Creating...'
+              : 'Create Bug'}
           </button>
         </div>
       </div>
