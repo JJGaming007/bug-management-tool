@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/context/AuthContext'
 
 interface CommentFormProps {
-  bugId: number
+  bugId: string | number
 }
 
 export const CommentForm: FC<CommentFormProps> = ({ bugId }) => {

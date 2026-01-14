@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/context/AuthContext'
 import type { Watcher } from '@/types'
 
 interface WatchersProps {
-  bugId: number
+  bugId: string | number
 }
 
 export const Watchers: FC<WatchersProps> = ({ bugId }) => {

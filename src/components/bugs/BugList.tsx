@@ -89,7 +89,7 @@ const BugList: FC<BugListProps> = ({ bugs = [], search = '' }) => {
               <div className="flex justify-between items-start">
                 <div>
                   <h4 className="font-semibold text-sm">{bug.title}</h4>
-                  <p className="text-xs text-gray-400 mt-1">{bug.reporter ?? ''}</p>
+                  <p className="text-xs text-gray-400 mt-1">{bug.reporter_id ?? ''}</p>
                 </div>
                 <span
                   className="text-xs px-2 py-1 rounded text-white"
@@ -143,7 +143,7 @@ const BugList: FC<BugListProps> = ({ bugs = [], search = '' }) => {
 
               <div>
                 <div className="text-xs text-gray-400">Reporter</div>
-                <div className="mt-1">{selectedBug.reporter ?? selectedBug.reporter_email ?? '—'}</div>
+                <div className="mt-1">{selectedBug.reporter_id ?? '—'}</div>
               </div>
 
               <div>

@@ -3,13 +3,11 @@
 
 import { FC, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import type { definitions as DB } from '@/types/database'
-
-type Sprint = DB['sprints']
+import type { Sprint } from '@/types'
 
 interface Props {
-  value: number | null
-  onChange: (id: number | null) => void
+  value: string | null
+  onChange: (id: string | null) => void
 }
 
 export const SprintSelector: FC<Props> = ({ value, onChange }) => {
@@ -18,10 +16,10 @@ export const SprintSelector: FC<Props> = ({ value, onChange }) => {
   useEffect(() => {
     supabase
       .from('sprints')
-      .select('id, name')
+      .select('*')
       .order('start_date', { ascending: true })
       .then(({ data }) => {
-        if (data) setSprints(data)
+        if (data) setSprints(data as Sprint[])
       })
   }, [])
 
@@ -31,7 +29,7 @@ export const SprintSelector: FC<Props> = ({ value, onChange }) => {
       <select
         value={value ?? ''}
         onChange={(e) =>
-          onChange(e.target.value ? Number(e.target.value) : null)
+          onChange(e.target.value || null)
         }
         className="w-full px-3 py-2 rounded bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring focus:ring-[var(--accent-hover)]"
       >

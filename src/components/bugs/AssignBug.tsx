@@ -3,8 +3,8 @@ import { FC, useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 
 interface AssignBugProps {
-  bugId: number
-  currentAssignee?: string
+  bugId: string | number
+  currentAssignee?: string | null
 }
 
 export const AssignBug: FC<AssignBugProps> = ({ bugId, currentAssignee }) => {

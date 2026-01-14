@@ -4,7 +4,7 @@ import type { Bug } from '@/types'
 import { supabase } from '@/lib/supabase/client'
 
 interface SubtasksListProps {
-  parentId: number
+  parentId: string | number
 }
 
 export const SubtasksList: FC<SubtasksListProps> = ({ parentId }) => {

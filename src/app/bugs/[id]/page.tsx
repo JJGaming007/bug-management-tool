@@ -135,7 +135,7 @@ export default function BugDetailPage() {
 
   // Generate JIRA-style bug key
   function getBugKey(bug: Bug): string {
-    if ((bug as Record<string, unknown>).bug_key) return String((bug as Record<string, unknown>).bug_key)
+    if (bug.bug_key) return String(bug.bug_key)
     // Fallback: use last 4 digits of UUID
     const idStr = String(bug.id)
     const shortId = idStr.replace(/-/g, '').slice(-4).toUpperCase()
@@ -208,7 +208,7 @@ export default function BugDetailPage() {
           user_id: currentUserId,
           action: 'updated',
           field_name: field,
-          old_value: String((bug as Record<string, unknown>)[field] || ''),
+          old_value: String((bug as unknown as Record<string, unknown>)[field] || ''),
           new_value: String(value || ''),
         })
       } catch { /* ignore */ }
@@ -429,40 +429,40 @@ export default function BugDetailPage() {
           </div>
 
           {/* Details Section */}
-          {((bug as Record<string, unknown>).steps_to_reproduce || (bug as Record<string, unknown>).expected_result || (bug as Record<string, unknown>).actual_result) && (
+          {(bug.steps_to_reproduce || bug.expected_result || bug.actual_result) && (
             <div className="card">
               <div className="card-header">
                 <span className="card-title">Bug Details</span>
               </div>
               <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {(bug as Record<string, unknown>).steps_to_reproduce && (
+                {bug.steps_to_reproduce && (
                   <div>
                     <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                       Steps to Reproduce
                     </label>
                     <p style={{ marginTop: '6px', whiteSpace: 'pre-wrap', color: 'var(--text-secondary)' }}>
-                      {String((bug as Record<string, unknown>).steps_to_reproduce)}
+                      {bug.steps_to_reproduce}
                     </p>
                   </div>
                 )}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  {(bug as Record<string, unknown>).expected_result && (
+                  {bug.expected_result && (
                     <div>
                       <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         Expected Result
                       </label>
                       <p style={{ marginTop: '6px', color: 'var(--text-secondary)' }}>
-                        {String((bug as Record<string, unknown>).expected_result)}
+                        {bug.expected_result}
                       </p>
                     </div>
                   )}
-                  {(bug as Record<string, unknown>).actual_result && (
+                  {bug.actual_result && (
                     <div>
                       <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         Actual Result
                       </label>
                       <p style={{ marginTop: '6px', color: 'var(--text-secondary)' }}>
-                        {String((bug as Record<string, unknown>).actual_result)}
+                        {bug.actual_result}
                       </p>
                     </div>
                   )}
@@ -730,11 +730,11 @@ export default function BugDetailPage() {
                   </div>
                 ) : (
                   <div
-                    onClick={() => { setEditingField('priority'); setEditValue((bug as Record<string, unknown>).priority as string || 'medium') }}
+                    onClick={() => { setEditingField('priority'); setEditValue(bug.priority || 'medium') }}
                     style={{ cursor: 'pointer' }}
                   >
-                    <span className={`badge ${getPriorityClass((bug as Record<string, unknown>).priority as string)}`}>
-                      {((bug as Record<string, unknown>).priority as string) || 'Medium'}
+                    <span className={`badge ${getPriorityClass(bug.priority)}`}>
+                      {bug.priority || 'Medium'}
                     </span>
                   </div>
                 )}
@@ -762,7 +762,7 @@ export default function BugDetailPage() {
                   </div>
                 ) : (
                   <div
-                    onClick={() => { setEditingField('assignee_id'); setEditValue((bug as Record<string, unknown>).assignee_id as string || '') }}
+                    onClick={() => { setEditingField('assignee_id'); setEditValue(bug.assignee_id || '') }}
                     style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
                   >
                     <div
@@ -770,7 +770,7 @@ export default function BugDetailPage() {
                         width: '24px',
                         height: '24px',
                         borderRadius: '50%',
-                        background: (bug as Record<string, unknown>).assignee_id ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' : 'var(--surface-2)',
+                        background: bug.assignee_id ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' : 'var(--surface-2)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -779,10 +779,10 @@ export default function BugDetailPage() {
                         color: 'white',
                       }}
                     >
-                      {getProfileInitial((bug as Record<string, unknown>).assignee_id as string)}
+                      {getProfileInitial(bug.assignee_id)}
                     </div>
                     <span style={{ color: 'var(--text-secondary)' }}>
-                      {getProfileName((bug as Record<string, unknown>).assignee_id as string)}
+                      {getProfileName(bug.assignee_id)}
                     </span>
                   </div>
                 )}
@@ -796,7 +796,7 @@ export default function BugDetailPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Reporter</span>
                 <span style={{ color: 'var(--text-primary)' }}>
-                  {getProfileName((bug as Record<string, unknown>).reporter_id as string)}
+                  {getProfileName(bug.reporter_id)}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -805,18 +805,18 @@ export default function BugDetailPage() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Updated</span>
-                <span style={{ color: 'var(--text-primary)' }}>{formatDate((bug as Record<string, unknown>).updated_at as string)}</span>
+                <span style={{ color: 'var(--text-primary)' }}>{formatDate(bug.updated_at ?? undefined)}</span>
               </div>
-              {(bug as Record<string, unknown>).environment && (
+              {bug.environment && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-muted)' }}>Environment</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{String((bug as Record<string, unknown>).environment)}</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{bug.environment}</span>
                 </div>
               )}
-              {(bug as Record<string, unknown>).device && (
+              {bug.device && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-muted)' }}>Device</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{String((bug as Record<string, unknown>).device)}</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{bug.device}</span>
                 </div>
               )}
             </div>

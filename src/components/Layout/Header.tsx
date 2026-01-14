@@ -7,7 +7,7 @@ import { Sun, Moon } from 'lucide-react'
 
 export function Header() {
   const { user, signOut } = useAuth()
-  const { theme, toggle } = useTheme()
+  const { theme, toggleTheme } = useTheme()
 
   return (
     <header className="flex justify-between items-center mb-6">
@@ -18,7 +18,7 @@ export function Header() {
         </Button>
       </div>
       <button
-        onClick={toggle}
+        onClick={toggleTheme}
         className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition"
         aria-label="Toggle dark mode"
       >

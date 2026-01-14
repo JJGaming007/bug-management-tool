@@ -9,9 +9,10 @@ interface BugChartProps {
 
 export const BugChart: FC<BugChartProps> = ({ bugs }) => {
   const data = useMemo(() => {
-    const counts = { open: 0, 'in-progress': 0, resolved: 0, closed: 0 }
+    const counts: Record<string, number> = { open: 0, 'in-progress': 0, resolved: 0, closed: 0 }
     bugs.forEach((b) => {
-      if (counts[b.status] !== undefined) counts[b.status]++
+      const normalizedStatus = (b.status || '').toLowerCase().replace(' ', '-')
+      if (counts[normalizedStatus] !== undefined) counts[normalizedStatus]++
     })
     return Object.entries(counts).map(([status, value]) => ({ status, value }))
   }, [bugs])

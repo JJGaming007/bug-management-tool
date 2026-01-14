@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 
 interface StatusSelectorProps {
-  bugId: number
+  bugId: string | number
   currentStatus: string
 }
 
