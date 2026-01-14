@@ -820,6 +820,9 @@ input[type="file"]::file-selector-button:hover {
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 8px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .kanban-card-meta {
@@ -1759,27 +1762,39 @@ svg {
     padding-bottom: 20px;
     -webkit-overflow-scrolling: touch;
     scroll-snap-type: x mandatory;
+    gap: 12px;
   }
 
   .kanban-column {
     scroll-snap-align: start;
     width: 85vw;
-    max-width: 300px;
-    min-width: 260px;
+    max-width: 320px;
+    min-width: 280px;
+    flex-shrink: 0;
   }
 
   .kanban-card {
-    padding: 10px;
+    padding: 12px;
   }
 
   .kanban-card-title {
-    font-size: 12px;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .kanban-column-header {
+    padding: 12px;
+  }
+
+  .kanban-column-body {
+    padding: 10px;
   }
 }
 
 @media (max-width: 480px) {
   .kanban-column {
-    width: 90vw;
+    width: 92vw;
+    min-width: 260px;
   }
 }
 
@@ -1824,37 +1839,16 @@ svg {
 .editable-field {
   position: relative;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 8px 12px;
   margin: -4px -8px;
   border-radius: var(--radius-sm);
   transition: background var(--transition-fast);
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .editable-field:hover {
   background: var(--surface-2);
-}
-
-.editable-field:hover .edit-icon {
-  opacity: 1;
-}
-
-.edit-icon {
-  width: 18px;
-  height: 18px;
-  color: var(--text-muted);
-  opacity: 0;
-  transition: opacity var(--transition-fast);
-  flex-shrink: 0;
-}
-
-/* Always show edit icon on mobile (touch devices) */
-@media (max-width: 768px) {
-  .edit-icon {
-    opacity: 0.6;
-  }
 }
 
 /* ===== General Mobile Improvements ===== */

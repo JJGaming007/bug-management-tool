@@ -103,10 +103,17 @@ export default function CreateOrganizationModal({ isOpen, onClose, onSuccess }: 
         .single()
 
       if (orgError) {
+        console.error('Organization creation error:', orgError)
         if (orgError.code === '23505') {
           toast.error('An organization with this slug already exists')
+        } else if (orgError.code === '42P01') {
+          toast.error('Organizations table not found. Please run the database migration SQL.')
+        } else if (orgError.code === '42703') {
+          toast.error('Database schema mismatch. Please check if organizations table exists.')
+        } else if (orgError.message?.includes('permission denied') || orgError.code === '42501') {
+          toast.error('Permission denied. Check Row Level Security policies.')
         } else {
-          throw orgError
+          toast.error(`Failed: ${orgError.message || 'Unknown error'}`)
         }
         return
       }
