@@ -131,6 +131,15 @@ export default function BugsPage() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
 
+  // Generate JIRA-style bug key
+  const getBugKey = (bug: Bug): string => {
+    if (bug.bug_key) return String(bug.bug_key)
+    // Fallback: use last 6 characters of UUID
+    const idStr = String(bug.id)
+    const shortId = idStr.replace(/-/g, '').slice(-6).toLowerCase()
+    return `#${shortId}`
+  }
+
   return (
     <div>
       {/* Header */}
@@ -150,7 +159,6 @@ export default function BugsPage() {
         <div className="card-body" style={{ padding: '16px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', flex: 1, minWidth: '200px', maxWidth: '320px' }}>
-              <SearchIcon />
               <input
                 type="text"
                 className="input"
@@ -159,7 +167,7 @@ export default function BugsPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{ paddingLeft: '36px' }}
               />
-              <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
+              <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}>
                 <SearchIcon />
               </span>
             </div>
@@ -256,7 +264,7 @@ export default function BugsPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
                     <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{bug.title || 'Untitled'}</span>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>#{String(bug.id).slice(-6)}</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{getBugKey(bug)}</span>
                   </div>
                   <p style={{
                     fontSize: '13px',

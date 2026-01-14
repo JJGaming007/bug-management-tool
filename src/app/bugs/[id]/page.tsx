@@ -56,6 +56,53 @@ const DownloadIcon = () => (
   </svg>
 )
 
+const CloseIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+  </svg>
+)
+
+const FileIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4" />
+  </svg>
+)
+
+// Helper function to check if file is an image
+function isImageFile(mimeType: string): boolean {
+  return mimeType.startsWith('image/')
+}
+
+// Helper function to render text with clickable links
+function renderTextWithLinks(text: string): React.ReactNode {
+  const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g
+  const parts = text.split(urlRegex)
+
+  return parts.map((part, index) => {
+    if (urlRegex.test(part)) {
+      // Reset the regex lastIndex
+      urlRegex.lastIndex = 0
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: 'var(--accent-primary)',
+            textDecoration: 'underline',
+            wordBreak: 'break-all',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      )
+    }
+    return part
+  })
+}
+
 export default function BugDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -78,6 +125,9 @@ export default function BugDetailPage() {
   // Editing bug fields
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState<string>('')
+
+  // Attachment viewer modal
+  const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -496,52 +546,101 @@ export default function BugDetailPage() {
                   No attachments yet
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
                   {attachments.map((att) => (
                     <div
                       key={att.id}
                       style={{
                         display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 12px',
+                        flexDirection: 'column',
                         background: 'var(--surface-1)',
                         borderRadius: 'var(--radius-md)',
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                      }}
+                      onClick={() => setViewingAttachment(att)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)'
+                        e.currentTarget.style.boxShadow = 'none'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
-                        <PaperclipIcon />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <a
-                            href={getAttachmentUrl(att.file_path)}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{ color: 'var(--accent-primary)', fontWeight: 500, textDecoration: 'none' }}
-                          >
-                            {att.filename}
-                          </a>
-                          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                            {Math.round(att.file_size / 1024)} KB • {timeAgo(att.created_at)}
+                      {/* Thumbnail */}
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '100px',
+                          background: 'var(--surface-2)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {isImageFile(att.mime_type) ? (
+                          <img
+                            src={getAttachmentUrl(att.file_path)}
+                            alt={att.filename}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                          />
+                        ) : (
+                          <div style={{ color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                            <FileIcon />
+                            <span style={{ fontSize: '10px', textTransform: 'uppercase' }}>
+                              {att.filename.split('.').pop()}
+                            </span>
                           </div>
+                        )}
+                      </div>
+                      {/* File Info */}
+                      <div style={{ padding: '8px 10px' }}>
+                        <div
+                          style={{
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            color: 'var(--text-primary)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            marginBottom: '4px',
+                          }}
+                          title={att.filename}
+                        >
+                          {att.filename}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          {Math.round(att.file_size / 1024)} KB
                         </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {/* Actions */}
+                      <div style={{ display: 'flex', borderTop: '1px solid var(--border-subtle)', padding: '6px' }}>
                         <a
                           href={getAttachmentUrl(att.file_path)}
-                          target="_blank"
-                          rel="noreferrer"
+                          download={att.filename}
                           className="btn btn-sm btn-ghost"
                           title="Download"
-                          style={{ padding: '6px' }}
+                          style={{ flex: 1, padding: '4px', justifyContent: 'center' }}
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <DownloadIcon />
                         </a>
                         {att.uploaded_by === currentUserId && (
                           <button
                             className="btn btn-sm btn-ghost"
-                            onClick={() => deleteAttachment(att)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              deleteAttachment(att)
+                            }}
                             title="Delete"
-                            style={{ color: '#ef4444', padding: '6px' }}
+                            style={{ flex: 1, padding: '4px', justifyContent: 'center', color: '#ef4444' }}
                           >
                             <TrashIcon />
                           </button>
@@ -639,7 +738,7 @@ export default function BugDetailPage() {
                         ) : (
                           <>
                             <p style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', marginBottom: '6px' }}>
-                              {comment.content}
+                              {renderTextWithLinks(comment.content)}
                             </p>
                             {comment.author_id === currentUserId && (
                               <div style={{ display: 'flex', gap: '8px' }}>
@@ -857,6 +956,172 @@ export default function BugDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Attachment Viewer Modal */}
+      {viewingAttachment && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.9)',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onClick={() => setViewingAttachment(null)}
+        >
+          {/* Header */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '16px 24px',
+              background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ color: 'white' }}>
+              <div style={{ fontWeight: 600, marginBottom: '4px' }}>{viewingAttachment.filename}</div>
+              <div style={{ fontSize: '12px', opacity: 0.7 }}>
+                {Math.round(viewingAttachment.file_size / 1024)} KB • {timeAgo(viewingAttachment.created_at)}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <a
+                href={getAttachmentUrl(viewingAttachment.file_path)}
+                download={viewingAttachment.filename}
+                className="btn btn-sm"
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  padding: '8px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <DownloadIcon /> Download
+              </a>
+              <button
+                onClick={() => setViewingAttachment(null)}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: 'white',
+                }}
+              >
+                <CloseIcon />
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div
+            style={{
+              maxWidth: '90vw',
+              maxHeight: '80vh',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {isImageFile(viewingAttachment.mime_type) ? (
+              <img
+                src={getAttachmentUrl(viewingAttachment.file_path)}
+                alt={viewingAttachment.filename}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '80vh',
+                  objectFit: 'contain',
+                  borderRadius: '8px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                }}
+              />
+            ) : viewingAttachment.mime_type === 'application/pdf' ? (
+              <iframe
+                src={getAttachmentUrl(viewingAttachment.file_path)}
+                style={{
+                  width: '80vw',
+                  height: '80vh',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: 'white',
+                }}
+                title={viewingAttachment.filename}
+              />
+            ) : viewingAttachment.mime_type.startsWith('video/') ? (
+              <video
+                src={getAttachmentUrl(viewingAttachment.file_path)}
+                controls
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '80vh',
+                  borderRadius: '8px',
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  background: 'var(--surface-1)',
+                  padding: '40px 60px',
+                  borderRadius: '12px',
+                  textAlign: 'center',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <FileIcon />
+                <div style={{ marginTop: '16px', fontSize: '18px', fontWeight: 600 }}>
+                  {viewingAttachment.filename}
+                </div>
+                <div style={{ marginTop: '8px', color: 'var(--text-muted)' }}>
+                  This file type cannot be previewed
+                </div>
+                <a
+                  href={getAttachmentUrl(viewingAttachment.file_path)}
+                  download={viewingAttachment.filename}
+                  className="btn btn-primary"
+                  style={{ marginTop: '20px' }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <DownloadIcon /> Download File
+                </a>
+              </div>
+            )}
+          </div>
+
+          {/* Navigation hint */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '24px',
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: '13px',
+            }}
+          >
+            Click anywhere outside to close
+          </div>
+        </div>
+      )}
     </div>
   )
 }
