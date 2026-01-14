@@ -180,7 +180,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+      <div className="stats-grid" style={{ marginBottom: '24px' }}>
         {stats.map((stat) => {
           const Icon = stat.icon
           return (
@@ -209,7 +209,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+      <div className="charts-grid">
         {/* Trend Chart */}
         <div className="card">
           <div className="card-header">
@@ -311,14 +311,14 @@ export default function DashboardPage() {
       <div style={{ marginTop: '24px' }}>
         <div className="card">
           <div className="card-body">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
+            <div className="quick-stats-container">
+              <div className="quick-stats-total">
                 <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
                   Total Bugs Tracked
                 </div>
                 <div style={{ fontSize: '28px', fontWeight: 700 }}>{loading ? '-' : counts.total}</div>
               </div>
-              <div style={{ display: 'flex', gap: '32px' }}>
+              <div className="quick-stats-percentages">
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--status-open)' }}>
                     {loading ? '-' : Math.round((counts.open / Math.max(1, counts.total)) * 100)}%

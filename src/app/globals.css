@@ -91,6 +91,7 @@ body {
   color: var(--text-primary);
   line-height: 1.5;
   font-size: 14px;
+  overflow-x: hidden;
 }
 
 a {
@@ -124,6 +125,7 @@ h4 { font-size: 16px; }
   display: flex;
   min-height: 100vh;
   background: var(--bg-primary);
+  overflow-x: hidden;
 }
 
 /* ===== Sidebar ===== */
@@ -310,6 +312,10 @@ h4 { font-size: 16px; }
 .topbar-btn:hover {
   background: var(--surface-2);
   color: var(--text-primary);
+}
+
+.menu-btn {
+  display: none;
 }
 
 .topbar-avatar {
@@ -1203,8 +1209,48 @@ input[type="file"]::file-selector-button:hover {
 .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
 
+/* ===== Dashboard Grids ===== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.quick-stats-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.quick-stats-percentages {
+  display: flex;
+  gap: 32px;
+  flex-shrink: 0;
+}
+
+/* ===== Sidebar Overlay (Mobile) ===== */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 35;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 1024px) {
+  .menu-btn {
+    display: flex;
+  }
+
   .sidebar {
     transform: translateX(-100%);
     transition: transform var(--transition-base);
@@ -1214,11 +1260,23 @@ input[type="file"]::file-selector-button:hover {
     transform: translateX(0);
   }
 
+  .sidebar.open ~ .sidebar-overlay {
+    display: block;
+  }
+
   .main {
     margin-left: 0;
   }
 
   .grid-cols-4 { grid-template-columns: repeat(2, 1fr); }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1230,6 +1288,22 @@ input[type="file"]::file-selector-button:hover {
   .grid-cols-4 { grid-template-columns: repeat(2, 1fr); }
 
   .grid-cols-2 { grid-template-columns: 1fr; }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .quick-stats-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .quick-stats-percentages {
+    gap: 20px;
+    width: 100%;
+    justify-content: space-between;
+  }
 
   .kanban-column {
     width: 280px;
@@ -1244,6 +1318,15 @@ input[type="file"]::file-selector-button:hover {
   .grid-cols-2,
   .grid-cols-3,
   .grid-cols-4 { grid-template-columns: 1fr; }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-stats-percentages {
+    flex-direction: column;
+    gap: 16px;
+  }
 }
 
 /* Fix SVG sizing */

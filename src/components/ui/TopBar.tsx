@@ -3,9 +3,18 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/context/AuthContext'
+import { useSidebar } from '@/lib/context/SidebarContext'
 import { supabase } from '@/lib/supabase/client'
 
 // Icons
+const MenuIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="4" x2="20" y1="12" y2="12" />
+    <line x1="4" x2="20" y1="6" y2="6" />
+    <line x1="4" x2="20" y1="18" y2="18" />
+  </svg>
+)
+
 const SearchIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="11" cy="11" r="8" />
@@ -43,6 +52,7 @@ const UserIcon = () => (
 
 export default function TopBar() {
   const router = useRouter()
+  const { toggle } = useSidebar()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [notificationCount] = useState(0)
@@ -88,6 +98,13 @@ export default function TopBar() {
   return (
     <div className="topbar">
       <div className="topbar-left">
+        <button
+          className="topbar-btn menu-btn"
+          onClick={toggle}
+          aria-label="Toggle sidebar"
+        >
+          <MenuIcon />
+        </button>
         <form onSubmit={handleSearch} className="topbar-search">
           <span className="topbar-search-icon">
             <SearchIcon />

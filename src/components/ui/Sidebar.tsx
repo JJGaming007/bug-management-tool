@@ -3,6 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSidebar } from '@/lib/context/SidebarContext'
 
 // Icons
 const DashboardIcon = () => (
@@ -76,6 +77,7 @@ const settingsItems = [
 
 export default function Sidebar() {
   const pathname = usePathname() ?? '/'
+  const { isOpen, close } = useSidebar()
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -85,8 +87,9 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="sidebar">
-      <div className="sidebar-header">
+    <>
+      <div className={`sidebar ${isOpen ? 'open' : ''}`}>
+        <div className="sidebar-header">
         <div className="sidebar-brand">
           <div className="sidebar-logo">BT</div>
           <span className="sidebar-title">BugTracker</span>
@@ -104,6 +107,7 @@ export default function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={`nav-item ${active ? 'active' : ''}`}
+                onClick={close}
               >
                 <Icon />
                 <span>{item.label}</span>
@@ -122,6 +126,7 @@ export default function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={`nav-item ${active ? 'active' : ''}`}
+                onClick={close}
               >
                 <Icon />
                 <span>{item.label}</span>
@@ -131,11 +136,13 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      <div className="sidebar-footer">
-        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-          BugTracker Pro v1.0
+        <div className="sidebar-footer">
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            BugTracker Pro v1.0
+          </div>
         </div>
       </div>
-    </div>
+      {isOpen && <div className="sidebar-overlay" onClick={close} />}
+    </>
   )
 }
