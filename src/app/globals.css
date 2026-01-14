@@ -312,6 +312,10 @@ h4 { font-size: 16px; }
   color: var(--text-primary);
 }
 
+.menu-btn {
+  display: none;
+}
+
 .topbar-avatar {
   width: 36px;
   height: 36px;
@@ -1203,8 +1207,22 @@ input[type="file"]::file-selector-button:hover {
 .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
 
+/* ===== Sidebar Overlay (Mobile) ===== */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 35;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 1024px) {
+  .menu-btn {
+    display: flex;
+  }
+
   .sidebar {
     transform: translateX(-100%);
     transition: transform var(--transition-base);
@@ -1212,6 +1230,10 @@ input[type="file"]::file-selector-button:hover {
 
   .sidebar.open {
     transform: translateX(0);
+  }
+
+  .sidebar.open ~ .sidebar-overlay {
+    display: block;
   }
 
   .main {
