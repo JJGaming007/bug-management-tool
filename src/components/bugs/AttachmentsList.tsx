@@ -6,7 +6,7 @@ import type { Attachment } from '@/types'
 import { supabase } from '@/lib/supabase/client'
 
 interface AttachmentsListProps {
-  bugId: number
+  bugId: string | number
 }
 
 export const AttachmentsList: FC<AttachmentsListProps> = ({ bugId }) => {
@@ -34,12 +34,12 @@ export const AttachmentsList: FC<AttachmentsListProps> = ({ bugId }) => {
       {files.map((f) => (
         <a
           key={f.id}
-          href={f.file_url}
+          href={f.file_path}
           target="_blank"
           rel="noopener noreferrer"
           className="block text-[var(--accent)] hover:underline"
         >
-          {f.file_name}
+          {f.filename}
         </a>
       ))}
     </div>

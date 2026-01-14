@@ -3,7 +3,7 @@ import { FC } from 'react'
 import { useComments } from '@/hooks/useComments'
 
 interface CommentListProps {
-  bugId: number
+  bugId: string | number
 }
 
 export const CommentList: FC<CommentListProps> = ({ bugId }) => {

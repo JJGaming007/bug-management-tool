@@ -29,7 +29,7 @@ export const NewBugModal: FC<NewBugModalProps> = ({ isOpen, onClose, onCreated }
   const [issueType, setIssueType] = useState<'Bug' | 'Task' | 'Story'>('Bug')
   const [sprint, setSprint] = useState<string | null>(null)
   const [epic, setEpic] = useState<string | null>(null)
-  const [subtasks, setSubtasks] = useState<string[]>([])
+  const [parentId, setParentId] = useState<string | number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -45,7 +45,7 @@ export const NewBugModal: FC<NewBugModalProps> = ({ isOpen, onClose, onCreated }
       setIssueType('Bug')
       setSprint(null)
       setEpic(null)
-      setSubtasks([])
+      setParentId(null)
       setError(null)
       setLoading(false)
     }
@@ -69,12 +69,11 @@ export const NewBugModal: FC<NewBugModalProps> = ({ isOpen, onClose, onCreated }
       description: description.trim(),
       labels,
       due_date: dueDate,
-      score,
+      story_points: score,
       issue_type: issueType,
-      sprint,
-      epic,
-      subtasks,
-      status: 'new',
+      sprint_id: sprint,
+      epic_id: epic,
+      status: 'Open',
     }
 
     if (user?.email) {
@@ -92,7 +91,7 @@ export const NewBugModal: FC<NewBugModalProps> = ({ isOpen, onClose, onCreated }
       setIssueType('Bug')
       setSprint(null)
       setEpic(null)
-      setSubtasks([])
+      setParentId(null)
       onClose()
       onCreated()
     } catch (e1: any) {
@@ -171,8 +170,8 @@ export const NewBugModal: FC<NewBugModalProps> = ({ isOpen, onClose, onCreated }
 
           <div className="col-span-2">
             <label>
-              <div className="text-xs text-muted">Subtasks</div>
-              <SubtaskSelector value={subtasks} onChange={setSubtasks} options={[]} bugs={[]} />
+              <div className="text-xs text-muted">Parent Task</div>
+              <SubtaskSelector value={parentId} onChange={setParentId} options={[]} bugs={[]} />
             </label>
           </div>
 

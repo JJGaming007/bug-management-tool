@@ -3,7 +3,7 @@ import { FC, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
 
 interface AttachmentUploadProps {
-  bugId: number
+  bugId: string | number
   onUploaded: () => void
 }
 

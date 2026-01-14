@@ -11,10 +11,10 @@ export function useCreateBug() {
   const auth = (() => { try { return useAuth() } catch { return { user: null } } })()
   const user = auth?.user ?? null
 
-  return useMutation(
-    async (newBug: Record<string, any>) => {
+  return useMutation({
+    mutationFn: async (newBug: Record<string, unknown>) => {
       // defensive normalize
-      const payload = { ...newBug }
+      const payload: Record<string, unknown> = { ...newBug }
       if (!payload.status) payload.status = 'Open'
       if (String(payload.status).toLowerCase() === 'new') payload.status = 'Open'
       if (!payload.bug_key) payload.bug_key = uuidv4()
@@ -25,8 +25,6 @@ export function useCreateBug() {
       if (res.error) throw res.error
       return res.data
     },
-    {
-      onSuccess: () => qc.invalidateQueries({ queryKey: ['bugs'] })
-    }
-  )
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bugs'] })
+  })
 }

@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase/client'
 import type { Activity } from '@/types'
 
 interface TimelineProps {
-  bugId: number
+  bugId: string | number
 }
 
 export const Timeline: FC<TimelineProps> = ({ bugId }) => {

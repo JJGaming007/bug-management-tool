@@ -36,11 +36,13 @@ export const SaveFilter: FC<SaveFilterProps> = ({
     if (!user || !name.trim()) return
     await supabase.from('saved_filters').insert([
       {
-        user_email: user.email!,
+        user_id: user.id,
         name: name.trim(),
-        search,
-        status_filter: statusFilter,
-        priority_filter: priorityFilter,
+        filters: {
+          search,
+          status_filter: statusFilter,
+          priority_filter: priorityFilter,
+        },
       },
     ])
     setName('')
@@ -67,12 +69,12 @@ export const SaveFilter: FC<SaveFilterProps> = ({
 
       <select
         onChange={(e) => {
-          const f = saved.find((s) => s.id === +e.target.value)
-          if (f) {
+          const f = saved.find((s) => String(s.id) === e.target.value)
+          if (f && f.filters) {
             onApply({
-              search: f.search,
-              status: f.status_filter,
-              priority: f.priority_filter,
+              search: (f.filters.search as string) || '',
+              status: (f.filters.status_filter as string[]) || [],
+              priority: (f.filters.priority_filter as string[]) || [],
             })
           }
         }}

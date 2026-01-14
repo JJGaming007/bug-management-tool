@@ -12,9 +12,7 @@ import { CommentForm } from '@/components/bugs/CommentForm'
 import { Timeline } from '@/components/bugs/Timeline'
 import { AttachmentsList } from '@/components/bugs/AttachmentsList'
 import { AttachmentUpload } from '@/components/bugs/AttachmentUpload'
-import type { definitions as DB } from '@/types/database'
-
-type Bug = DB['bugs']
+import type { Bug } from '@/types'
 
 interface IssueDetailProps {
   bug: Bug
@@ -33,12 +31,7 @@ export const IssueDetail: FC<IssueDetailProps> = ({ bug }) => {
     <div className="space-y-6">
       {/* header */}
       <div className="flex justify-between items-center">
-        <Breadcrumbs
-          items={[
-            { label: 'Bugs', href: '/bugs' },
-            { label: `#${bug.id}`, href: `/bugs/${bug.id}` },
-          ]}
-        />
+        <Breadcrumbs />
         <div className="flex items-center space-x-2">
           <StatusSelector bugId={bug.id} currentStatus={bug.status} />
           <DeleteBug bugId={bug.id} onDeleted={() => router.push('/bugs')} />
@@ -77,10 +70,7 @@ export const IssueDetail: FC<IssueDetailProps> = ({ bug }) => {
             {/* Comments */}
             <div className="space-y-4">
               <CommentList bugId={bug.id} />
-              <CommentForm
-                bugId={bug.id}
-                onCommented={() => router.refresh()}
-              />
+              <CommentForm bugId={bug.id} />
             </div>
 
             {/* Activity */}

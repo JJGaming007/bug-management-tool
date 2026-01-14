@@ -1,15 +1,13 @@
 'use client'
 
 import { FC } from 'react'
-import type { definitions as DB } from '@/types/database'
+import type { Bug } from '@/types'
 import { SubtasksList } from '@/components/bugs/SubtasksList'
-
-type Bug = DB['bugs']
 
 interface IssueCardProps {
   bug: Bug
   isSelected?: boolean
-  onToggleSelect?: (id: string) => void
+  onToggleSelect?: (id: string | number) => void
 }
 
 export const IssueCard: FC<IssueCardProps> = ({

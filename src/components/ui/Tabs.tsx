@@ -54,7 +54,7 @@ export const Tabs: FC<TabsProps> = ({ tabs, children }) => {
               aria-selected={isSelected}
               aria-controls={`panel-${tab.key}`}
               tabIndex={isSelected ? 0 : -1}
-              ref={(el) => (tabRefs.current[idx] = el)}
+              ref={(el) => { tabRefs.current[idx] = el }}
               onClick={() => setActive(tab.key)}
               onKeyDown={(e) => onKeyDown(e, idx)}
               className={`
