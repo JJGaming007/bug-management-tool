@@ -6,6 +6,7 @@ export type BugPriority = 'low' | 'medium' | 'high' | 'critical'
 export type BugSeverity = 'minor' | 'major' | 'critical' | 'blocker'
 export type IssueType = 'Bug' | 'Task' | 'Story' | 'Sub-task'
 export type UserRole = 'admin' | 'qa_lead' | 'qa_tester' | 'developer' | 'viewer'
+export type OrgRole = 'owner' | 'admin' | 'member' | 'viewer'
 
 export interface Profile {
   id: string
@@ -18,11 +19,32 @@ export interface Profile {
   updated_at?: string
 }
 
+export interface Organization {
+  id: string
+  name: string
+  slug: string
+  description?: string | null
+  logo_url?: string | null
+  created_by?: string | null
+  created_at: string
+  updated_at?: string
+}
+
+export interface OrganizationMember {
+  id: string
+  organization_id: string
+  user_id: string
+  role: OrgRole
+  created_at: string
+}
+
 export interface Project {
   id: string
   name: string
   key: string
   description?: string | null
+  organization_id?: string | null
+  bug_counter?: number
   created_by?: string | null
   created_at: string
   updated_at?: string
@@ -52,6 +74,7 @@ export interface Epic {
 export interface Bug {
   id: string | number // Support both UUID and number for compatibility
   bug_key?: string
+  bug_number?: number // Sequential number within project
   title: string
   description?: string | null
 

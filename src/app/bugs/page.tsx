@@ -101,7 +101,9 @@ export default function BugsPage() {
 
   function handleBugCreated(created?: Bug) {
     setModalOpen(false)
-    if (created?.id) {
+    if (created?.bug_key) {
+      router.push(`/bugs/${created.bug_key}`)
+    } else if (created?.id) {
       router.push(`/bugs/${created.id}`)
     } else {
       fetchBugs()
@@ -247,7 +249,7 @@ export default function BugsPage() {
             {filteredBugs.map((bug, index) => (
               <Link
                 key={bug.id}
-                href={`/bugs/${bug.id}`}
+                href={`/bugs/${bug.bug_key || bug.id}`}
                 style={{
                   display: 'flex',
                   alignItems: 'flex-start',

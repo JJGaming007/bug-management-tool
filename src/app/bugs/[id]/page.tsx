@@ -7,11 +7,17 @@ import toast from 'react-hot-toast'
 import type { Bug } from '@/types'
 
 type Profile = { id: string; full_name?: string | null; email?: string | null }
+type Sprint = { id: string; name: string }
+type Epic = { id: string; name: string; key: string }
+type Project = { id: string; name: string; key: string }
 type Comment = { id: string; bug_id: string; author_id: string; content: string; created_at: string; updated_at: string }
 type Attachment = { id: string; bug_id: string; filename: string; file_path: string; file_size: number; mime_type: string; uploaded_by: string; created_at: string }
 type Activity = { id: string; bug_id: string; user_id: string; action: string; field_name?: string; old_value?: string; new_value?: string; created_at: string }
 
 const ATTACHMENT_BUCKET = 'bug-attachments'
+
+// Mobile breakpoint
+const MOBILE_BREAKPOINT = 768
 
 // Icons
 const ArrowLeftIcon = () => (
@@ -68,6 +74,18 @@ const FileIcon = () => (
   </svg>
 )
 
+const InfoIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" />
+  </svg>
+)
+
+const SettingsIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" />
+  </svg>
+)
+
 // Helper function to check if file is an image
 function isImageFile(mimeType: string): boolean {
   return mimeType.startsWith('image/')
@@ -80,7 +98,6 @@ function renderTextWithLinks(text: string): React.ReactNode {
 
   return parts.map((part, index) => {
     if (urlRegex.test(part)) {
-      // Reset the regex lastIndex
       urlRegex.lastIndex = 0
       return (
         <a
@@ -112,6 +129,9 @@ export default function BugDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [profiles, setProfiles] = useState<Profile[]>([])
+  const [sprints, setSprints] = useState<Sprint[]>([])
+  const [epics, setEpics] = useState<Epic[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [comments, setComments] = useState<Comment[]>([])
   const [activities, setActivities] = useState<Activity[]>([])
@@ -129,7 +149,21 @@ export default function BugDetailPage() {
   // Attachment viewer modal
   const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null)
 
+  // Mobile tabs
+  const [activeTab, setActiveTab] = useState<'details' | 'attachments' | 'comments' | 'activity'>('details')
+  const [isMobile, setIsMobile] = useState(false)
+
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  // Check screen size
+  useEffect(() => {
+    function checkMobile() {
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     if (bugId) loadAll()
@@ -155,25 +189,59 @@ export default function BugDetailPage() {
     setLoading(true)
     setError(null)
     try {
-      // Load bug
-      const { data: b, error: be } = await supabase.from('bugs').select('*').eq('id', bugId).single()
-      if (be) throw be
-      setBug(b as Bug)
+      // Try to find bug by ID or bug_key
+      let bugData = null
+      let bugError = null
+
+      // First try by ID (UUID)
+      const { data: byId, error: idError } = await supabase.from('bugs').select('*').eq('id', bugId).single()
+      if (!idError && byId) {
+        bugData = byId
+      } else {
+        // Try by bug_key
+        const { data: byKey, error: keyError } = await supabase.from('bugs').select('*').eq('bug_key', bugId.toUpperCase()).single()
+        if (!keyError && byKey) {
+          bugData = byKey
+        } else {
+          // Try case-insensitive bug_key search
+          const { data: byKeyLower, error: keyLowerError } = await supabase.from('bugs').select('*').ilike('bug_key', bugId).single()
+          if (!keyLowerError && byKeyLower) {
+            bugData = byKeyLower
+          } else {
+            bugError = idError || keyError || keyLowerError
+          }
+        }
+      }
+
+      if (bugError || !bugData) throw new Error('Bug not found')
+      setBug(bugData as Bug)
 
       // Load profiles
       const { data: profs } = await supabase.from('profiles').select('id, full_name, email').order('full_name', { ascending: true })
       setProfiles(profs || [])
 
+      // Load sprints
+      const { data: sprintData } = await supabase.from('sprints').select('id, name').order('name', { ascending: true })
+      setSprints(sprintData || [])
+
+      // Load epics
+      const { data: epicData } = await supabase.from('epics').select('id, name, key').order('name', { ascending: true })
+      setEpics(epicData || [])
+
+      // Load projects
+      const { data: projectData } = await supabase.from('projects').select('id, name, key').order('name', { ascending: true })
+      setProjects(projectData || [])
+
       // Load attachments
-      const { data: atts } = await supabase.from('bug_attachments').select('*').eq('bug_id', bugId).order('created_at', { ascending: true })
+      const { data: atts } = await supabase.from('bug_attachments').select('*').eq('bug_id', bugData.id).order('created_at', { ascending: true })
       setAttachments((atts as Attachment[]) || [])
 
       // Load comments
-      const { data: cms } = await supabase.from('bug_comments').select('*').eq('bug_id', bugId).order('created_at', { ascending: true })
+      const { data: cms } = await supabase.from('bug_comments').select('*').eq('bug_id', bugData.id).order('created_at', { ascending: true })
       setComments((cms as Comment[]) || [])
 
       // Load activities
-      const { data: acts } = await supabase.from('bug_activities').select('*').eq('bug_id', bugId).order('created_at', { ascending: false }).limit(20)
+      const { data: acts } = await supabase.from('bug_activities').select('*').eq('bug_id', bugData.id).order('created_at', { ascending: false }).limit(20)
       setActivities((acts as Activity[]) || [])
     } catch (ex: unknown) {
       const msg = ex instanceof Error ? ex.message : 'Failed to load bug'
@@ -181,15 +249,6 @@ export default function BugDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  // Generate JIRA-style bug key
-  function getBugKey(bug: Bug): string {
-    if (bug.bug_key) return String(bug.bug_key)
-    // Fallback: use last 4 digits of UUID
-    const idStr = String(bug.id)
-    const shortId = idStr.replace(/-/g, '').slice(-4).toUpperCase()
-    return `BUG-${shortId}`
   }
 
   // Profile display
@@ -204,9 +263,28 @@ export default function BugDetailPage() {
     return name[0]?.toUpperCase() || '?'
   }
 
+  // Sprint/Epic/Project display
+  function getSprintName(id?: string | null): string {
+    if (!id) return 'None'
+    const s = sprints.find(x => x.id === id)
+    return s?.name || 'Unknown'
+  }
+
+  function getEpicName(id?: string | null): string {
+    if (!id) return 'None'
+    const e = epics.find(x => x.id === id)
+    return e?.name || 'Unknown'
+  }
+
+  function getProjectName(id?: string | null): string {
+    if (!id) return 'None'
+    const p = projects.find(x => x.id === id)
+    return p?.name || 'Unknown'
+  }
+
   // Date formatting
-  function formatDate(value?: string): string {
-    if (!value) return ''
+  function formatDate(value?: string | null): string {
+    if (!value) return 'Not set'
     const d = new Date(value)
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
@@ -240,8 +318,15 @@ export default function BugDetailPage() {
     return 'badge-priority-low'
   }
 
+  function getSeverityClass(severity?: string): string {
+    const s = (severity || '').toLowerCase()
+    if (s === 'blocker' || s === 'critical') return 'badge-priority-critical'
+    if (s === 'major') return 'badge-priority-high'
+    return 'badge-priority-low'
+  }
+
   // Update bug field
-  async function updateBugField(field: string, value: string | null) {
+  async function updateBugField(field: string, value: string | string[] | number | null) {
     if (!bug) return
     try {
       const { error: updateError } = await supabase
@@ -263,7 +348,7 @@ export default function BugDetailPage() {
         })
       } catch { /* ignore */ }
 
-      toast.success(`Updated ${field}`)
+      toast.success(`Updated ${field.replace(/_/g, ' ')}`)
       setEditingField(null)
       loadAll()
     } catch (e) {
@@ -393,6 +478,106 @@ export default function BugDetailPage() {
     return data.publicUrl || ''
   }
 
+  // Render editable field
+  function renderEditableField(
+    field: string,
+    label: string,
+    value: string | null | undefined,
+    type: 'text' | 'textarea' | 'select' | 'date' | 'number',
+    options?: { value: string; label: string }[]
+  ) {
+    const displayValue = value || 'Not set'
+    const isEditing = editingField === field
+
+    if (isEditing) {
+      return (
+        <div className="editable-field">
+          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+            {label}
+          </label>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {type === 'select' && options ? (
+              <select
+                className="input"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                style={{ flex: 1, minWidth: '150px' }}
+              >
+                {options.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            ) : type === 'textarea' ? (
+              <textarea
+                className="input"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                rows={3}
+                style={{ flex: 1, minWidth: '200px' }}
+              />
+            ) : type === 'date' ? (
+              <input
+                type="date"
+                className="input"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                style={{ flex: 1, minWidth: '150px' }}
+              />
+            ) : type === 'number' ? (
+              <input
+                type="number"
+                className="input"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                style={{ flex: 1, minWidth: '100px' }}
+              />
+            ) : (
+              <input
+                type="text"
+                className="input"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                style={{ flex: 1, minWidth: '150px' }}
+              />
+            )}
+            <button className="btn btn-sm btn-primary" onClick={() => {
+              let finalValue: string | string[] | number | null = editValue
+              if (type === 'number') {
+                finalValue = editValue ? parseInt(editValue) : null
+              } else if (!editValue) {
+                finalValue = null
+              }
+              if (field === 'labels') {
+                finalValue = editValue.split(',').map(s => s.trim()).filter(Boolean)
+              }
+              updateBugField(field, finalValue)
+            }}>Save</button>
+            <button className="btn btn-sm btn-secondary" onClick={() => setEditingField(null)}>Cancel</button>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div
+        className="editable-field"
+        onClick={() => {
+          setEditingField(field)
+          setEditValue(value || '')
+        }}
+        style={{ cursor: 'pointer' }}
+      >
+        <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+          {label}
+        </label>
+        <div style={{ color: value ? 'var(--text-primary)' : 'var(--text-muted)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ whiteSpace: 'pre-wrap' }}>{displayValue}</span>
+          <EditIcon />
+        </div>
+      </div>
+    )
+  }
+
   // Render
   if (loading) {
     return (
@@ -429,7 +614,634 @@ export default function BugDetailPage() {
     )
   }
 
-  const bugKey = getBugKey(bug)
+  const bugKey = bug.bug_key || `BUG-${String(bug.id).slice(-6)}`
+
+  // Mobile Tab Content
+  const renderDetailsTab = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Title - Editable */}
+      <div className="card">
+        <div className="card-body">
+          {renderEditableField('title', 'Title', bug.title, 'text')}
+        </div>
+      </div>
+
+      {/* Description - Editable */}
+      <div className="card">
+        <div className="card-body">
+          {renderEditableField('description', 'Description', bug.description || '', 'textarea')}
+        </div>
+      </div>
+
+      {/* Bug Details Section */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">Bug Details</span>
+        </div>
+        <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {renderEditableField('steps_to_reproduce', 'Steps to Reproduce', bug.steps_to_reproduce || '', 'textarea')}
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
+            {renderEditableField('expected_result', 'Expected Result', bug.expected_result || '', 'text')}
+            {renderEditableField('actual_result', 'Actual Result', bug.actual_result || '', 'text')}
+          </div>
+        </div>
+      </div>
+
+      {/* Status & Priority */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">Status & Priority</span>
+        </div>
+        <div className="card-body" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+              Status
+            </label>
+            {editingField === 'status' ? (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <select
+                  className="input"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  style={{ flex: 1, minWidth: '120px' }}
+                >
+                  <option value="Open">Open</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Resolved">Resolved</option>
+                  <option value="Closed">Closed</option>
+                  <option value="Reopened">Reopened</option>
+                </select>
+                <button className="btn btn-sm btn-primary" onClick={() => updateBugField('status', editValue)}>Save</button>
+                <button className="btn btn-sm btn-secondary" onClick={() => setEditingField(null)}>Cancel</button>
+              </div>
+            ) : (
+              <div
+                onClick={() => { setEditingField('status'); setEditValue(bug.status || 'Open') }}
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <span className={`badge ${getStatusClass(bug.status)}`}>{bug.status || 'Open'}</span>
+                <EditIcon />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+              Priority
+            </label>
+            {editingField === 'priority' ? (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <select
+                  className="input"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  style={{ flex: 1, minWidth: '120px' }}
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+                <button className="btn btn-sm btn-primary" onClick={() => updateBugField('priority', editValue)}>Save</button>
+                <button className="btn btn-sm btn-secondary" onClick={() => setEditingField(null)}>Cancel</button>
+              </div>
+            ) : (
+              <div
+                onClick={() => { setEditingField('priority'); setEditValue(bug.priority || 'medium') }}
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <span className={`badge ${getPriorityClass(bug.priority)}`}>{bug.priority || 'Medium'}</span>
+                <EditIcon />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+              Severity
+            </label>
+            {editingField === 'severity' ? (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <select
+                  className="input"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  style={{ flex: 1, minWidth: '120px' }}
+                >
+                  <option value="minor">Minor</option>
+                  <option value="major">Major</option>
+                  <option value="critical">Critical</option>
+                  <option value="blocker">Blocker</option>
+                </select>
+                <button className="btn btn-sm btn-primary" onClick={() => updateBugField('severity', editValue)}>Save</button>
+                <button className="btn btn-sm btn-secondary" onClick={() => setEditingField(null)}>Cancel</button>
+              </div>
+            ) : (
+              <div
+                onClick={() => { setEditingField('severity'); setEditValue(bug.severity || 'major') }}
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <span className={`badge ${getSeverityClass(bug.severity)}`}>{bug.severity || 'Major'}</span>
+                <EditIcon />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+              Issue Type
+            </label>
+            {editingField === 'issue_type' ? (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <select
+                  className="input"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  style={{ flex: 1, minWidth: '120px' }}
+                >
+                  <option value="Bug">Bug</option>
+                  <option value="Task">Task</option>
+                  <option value="Story">Story</option>
+                  <option value="Sub-task">Sub-task</option>
+                </select>
+                <button className="btn btn-sm btn-primary" onClick={() => updateBugField('issue_type', editValue)}>Save</button>
+                <button className="btn btn-sm btn-secondary" onClick={() => setEditingField(null)}>Cancel</button>
+              </div>
+            ) : (
+              <div
+                onClick={() => { setEditingField('issue_type'); setEditValue(bug.issue_type || 'Bug') }}
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <span style={{ color: 'var(--text-primary)' }}>{bug.issue_type || 'Bug'}</span>
+                <EditIcon />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Assignment */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">Assignment</span>
+        </div>
+        <div className="card-body" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+              Assignee
+            </label>
+            {editingField === 'assignee_id' ? (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <select
+                  className="input"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  style={{ flex: 1, minWidth: '150px' }}
+                >
+                  <option value="">Unassigned</option>
+                  {profiles.map((p) => (
+                    <option key={p.id} value={p.id}>{p.full_name || p.email || p.id}</option>
+                  ))}
+                </select>
+                <button className="btn btn-sm btn-primary" onClick={() => updateBugField('assignee_id', editValue || null)}>Save</button>
+                <button className="btn btn-sm btn-secondary" onClick={() => setEditingField(null)}>Cancel</button>
+              </div>
+            ) : (
+              <div
+                onClick={() => { setEditingField('assignee_id'); setEditValue(bug.assignee_id || '') }}
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <div
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: bug.assignee_id ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' : 'var(--surface-2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    color: 'white',
+                  }}
+                >
+                  {getProfileInitial(bug.assignee_id)}
+                </div>
+                <span style={{ color: 'var(--text-secondary)' }}>{getProfileName(bug.assignee_id)}</span>
+                <EditIcon />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+              Project
+            </label>
+            {editingField === 'project_id' ? (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <select
+                  className="input"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  style={{ flex: 1, minWidth: '150px' }}
+                >
+                  <option value="">None</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name} ({p.key})</option>
+                  ))}
+                </select>
+                <button className="btn btn-sm btn-primary" onClick={() => updateBugField('project_id', editValue || null)}>Save</button>
+                <button className="btn btn-sm btn-secondary" onClick={() => setEditingField(null)}>Cancel</button>
+              </div>
+            ) : (
+              <div
+                onClick={() => { setEditingField('project_id'); setEditValue(bug.project_id || '') }}
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <span style={{ color: bug.project_id ? 'var(--text-primary)' : 'var(--text-muted)' }}>{getProjectName(bug.project_id)}</span>
+                <EditIcon />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+              Sprint
+            </label>
+            {editingField === 'sprint_id' ? (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <select
+                  className="input"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  style={{ flex: 1, minWidth: '150px' }}
+                >
+                  <option value="">None</option>
+                  {sprints.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+                <button className="btn btn-sm btn-primary" onClick={() => updateBugField('sprint_id', editValue || null)}>Save</button>
+                <button className="btn btn-sm btn-secondary" onClick={() => setEditingField(null)}>Cancel</button>
+              </div>
+            ) : (
+              <div
+                onClick={() => { setEditingField('sprint_id'); setEditValue(bug.sprint_id || '') }}
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <span style={{ color: bug.sprint_id ? 'var(--text-primary)' : 'var(--text-muted)' }}>{getSprintName(bug.sprint_id)}</span>
+                <EditIcon />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+              Epic
+            </label>
+            {editingField === 'epic_id' ? (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <select
+                  className="input"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  style={{ flex: 1, minWidth: '150px' }}
+                >
+                  <option value="">None</option>
+                  {epics.map((e) => (
+                    <option key={e.id} value={e.id}>{e.name}</option>
+                  ))}
+                </select>
+                <button className="btn btn-sm btn-primary" onClick={() => updateBugField('epic_id', editValue || null)}>Save</button>
+                <button className="btn btn-sm btn-secondary" onClick={() => setEditingField(null)}>Cancel</button>
+              </div>
+            ) : (
+              <div
+                onClick={() => { setEditingField('epic_id'); setEditValue(bug.epic_id || '') }}
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <span style={{ color: bug.epic_id ? 'var(--text-primary)' : 'var(--text-muted)' }}>{getEpicName(bug.epic_id)}</span>
+                <EditIcon />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Additional Fields */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">Additional Information</span>
+        </div>
+        <div className="card-body" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
+          {renderEditableField('due_date', 'Due Date', bug.due_date || '', 'date')}
+          {renderEditableField('story_points', 'Story Points', bug.story_points?.toString() || '', 'number')}
+          {renderEditableField('labels', 'Labels', Array.isArray(bug.labels) ? bug.labels.join(', ') : '', 'text')}
+        </div>
+      </div>
+
+      {/* Environment */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">Environment</span>
+        </div>
+        <div className="card-body" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
+          {renderEditableField('environment', 'Environment', bug.environment || '', 'text')}
+          {renderEditableField('device', 'Device', bug.device || '', 'text')}
+          {renderEditableField('browser', 'Browser', bug.browser || '', 'text')}
+          {renderEditableField('os', 'Operating System', bug.os || '', 'text')}
+        </div>
+      </div>
+
+      {/* Read-only Info */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">Metadata</span>
+        </div>
+        <div className="card-body" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px', fontSize: '13px' }}>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+              Reporter
+            </label>
+            <span style={{ color: 'var(--text-primary)' }}>{getProfileName(bug.reporter_id)}</span>
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+              Created
+            </label>
+            <span style={{ color: 'var(--text-primary)' }}>{formatDate(bug.created_at)}</span>
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+              Updated
+            </label>
+            <span style={{ color: 'var(--text-primary)' }}>{formatDate(bug.updated_at)}</span>
+          </div>
+          {bug.resolved_at && (
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+                Resolved
+              </label>
+              <span style={{ color: 'var(--text-primary)' }}>{formatDate(bug.resolved_at)}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderAttachmentsTab = () => (
+    <div className="card">
+      <div className="card-header">
+        <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <PaperclipIcon />
+          Attachments ({attachments.length})
+        </span>
+        <label className="btn btn-sm btn-secondary" style={{ cursor: 'pointer' }}>
+          <input
+            type="file"
+            ref={fileInputRef}
+            multiple
+            onChange={handleFileUpload}
+            style={{ display: 'none' }}
+            disabled={uploading}
+          />
+          {uploading ? 'Uploading...' : 'Add Files'}
+        </label>
+      </div>
+      <div className="card-body" style={{ padding: attachments.length === 0 ? '20px' : '12px' }}>
+        {attachments.length === 0 ? (
+          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0' }}>
+            No attachments yet
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '100px' : '140px'}, 1fr))`, gap: '12px' }}>
+            {attachments.map((att) => (
+              <div
+                key={att.id}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  background: 'var(--surface-1)',
+                  borderRadius: 'var(--radius-md)',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                }}
+                onClick={() => setViewingAttachment(att)}
+              >
+                <div
+                  style={{
+                    width: '100%',
+                    height: isMobile ? '80px' : '100px',
+                    background: 'var(--surface-2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {isImageFile(att.mime_type) ? (
+                    <img
+                      src={getAttachmentUrl(att.file_path)}
+                      alt={att.filename}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <div style={{ color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                      <FileIcon />
+                      <span style={{ fontSize: '10px', textTransform: 'uppercase' }}>{att.filename.split('.').pop()}</span>
+                    </div>
+                  )}
+                </div>
+                <div style={{ padding: '8px 10px' }}>
+                  <div
+                    style={{
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      color: 'var(--text-primary)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      marginBottom: '4px',
+                    }}
+                    title={att.filename}
+                  >
+                    {att.filename}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{Math.round(att.file_size / 1024)} KB</div>
+                </div>
+                <div style={{ display: 'flex', borderTop: '1px solid var(--border-subtle)', padding: '6px' }}>
+                  <a
+                    href={getAttachmentUrl(att.file_path)}
+                    download={att.filename}
+                    className="btn btn-sm btn-ghost"
+                    title="Download"
+                    style={{ flex: 1, padding: '4px', justifyContent: 'center' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <DownloadIcon />
+                  </a>
+                  {att.uploaded_by === currentUserId && (
+                    <button
+                      className="btn btn-sm btn-ghost"
+                      onClick={(e) => { e.stopPropagation(); deleteAttachment(att) }}
+                      title="Delete"
+                      style={{ flex: 1, padding: '4px', justifyContent: 'center', color: '#ef4444' }}
+                    >
+                      <TrashIcon />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  const renderCommentsTab = () => (
+    <div className="card">
+      <div className="card-header">
+        <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <MessageSquareIcon />
+          Comments ({comments.length})
+        </span>
+      </div>
+      <div className="card-body">
+        {/* New Comment */}
+        <div style={{ marginBottom: '20px' }}>
+          <textarea
+            className="input"
+            placeholder="Write a comment..."
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            rows={3}
+            disabled={submittingComment}
+          />
+          <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={postComment}
+              disabled={!newComment.trim() || submittingComment}
+            >
+              {submittingComment ? 'Posting...' : 'Post Comment'}
+            </button>
+          </div>
+        </div>
+
+        {comments.length === 0 ? (
+          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0' }}>
+            No comments yet. Be the first to comment!
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {comments.map((comment) => (
+              <div key={comment.id} style={{ display: 'flex', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: 'white',
+                    flexShrink: 0,
+                  }}
+                >
+                  {getProfileInitial(comment.author_id)}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 600, fontSize: '13px' }}>{getProfileName(comment.author_id)}</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{timeAgo(comment.created_at)}</span>
+                  </div>
+                  {editingCommentId === comment.id ? (
+                    <div>
+                      <textarea
+                        className="input"
+                        value={editingCommentText}
+                        onChange={(e) => setEditingCommentText(e.target.value)}
+                        rows={2}
+                      />
+                      <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button className="btn btn-primary btn-sm" onClick={() => updateComment(comment.id)}>Save</button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => setEditingCommentId(null)}>Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', marginBottom: '6px', wordBreak: 'break-word' }}>
+                        {renderTextWithLinks(comment.content)}
+                      </p>
+                      {comment.author_id === currentUserId && (
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => { setEditingCommentId(comment.id); setEditingCommentText(comment.content) }}
+                            style={{ padding: '4px 8px', fontSize: '12px' }}
+                          >
+                            <EditIcon /> Edit
+                          </button>
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => deleteComment(comment.id)}
+                            style={{ padding: '4px 8px', fontSize: '12px', color: '#ef4444' }}
+                          >
+                            <TrashIcon /> Delete
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  const renderActivityTab = () => (
+    <div className="card">
+      <div className="card-header">
+        <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <ActivityIcon />
+          Activity
+        </span>
+      </div>
+      <div className="card-body">
+        {activities.length === 0 ? (
+          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0', fontSize: '13px' }}>
+            No activity yet
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {activities.map((act) => (
+              <div key={act.id} style={{ fontSize: '12px' }}>
+                <div style={{ color: 'var(--text-muted)' }}>{timeAgo(act.created_at)}</div>
+                <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  <span style={{ fontWeight: 500 }}>{getProfileName(act.user_id)}</span>
+                  {' '}{act.action}
+                  {act.field_name && (
+                    <span style={{ color: 'var(--text-muted)' }}>
+                      {' '}{act.field_name}: {act.old_value || '(empty)'} → {act.new_value || '(empty)'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
 
   return (
     <div>
@@ -437,14 +1249,14 @@ export default function BugDetailPage() {
       <div style={{ marginBottom: '20px' }}>
         <button
           className="btn btn-ghost btn-sm"
-          onClick={() => router.back()}
+          onClick={() => router.push('/bugs')}
           style={{ marginBottom: '12px' }}
         >
           <ArrowLeftIcon />
           <span>Back to Bugs</span>
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
           <span style={{
             padding: '4px 10px',
             background: 'var(--accent-primary)',
@@ -456,506 +1268,162 @@ export default function BugDetailPage() {
           }}>
             {bugKey}
           </span>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, margin: 0, flex: 1 }}>
+          <h1 style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 700, margin: 0, flex: 1, minWidth: '200px' }}>
             {bug.title}
           </h1>
         </div>
       </div>
 
-      {/* Main Layout - JIRA Style */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '20px' }}>
-        {/* Left Panel - Main Content */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Description */}
-          <div className="card">
-            <div className="card-header">
-              <span className="card-title">Description</span>
-            </div>
-            <div className="card-body">
-              <p style={{ whiteSpace: 'pre-wrap', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                {bug.description || 'No description provided.'}
-              </p>
-            </div>
+      {/* Mobile Tabs */}
+      {isMobile ? (
+        <div>
+          <div className="tabs" style={{ marginBottom: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <button
+              className={`tab ${activeTab === 'details' ? 'active' : ''}`}
+              onClick={() => setActiveTab('details')}
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              <InfoIcon /> Details
+            </button>
+            <button
+              className={`tab ${activeTab === 'attachments' ? 'active' : ''}`}
+              onClick={() => setActiveTab('attachments')}
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              <PaperclipIcon /> Files ({attachments.length})
+            </button>
+            <button
+              className={`tab ${activeTab === 'comments' ? 'active' : ''}`}
+              onClick={() => setActiveTab('comments')}
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              <MessageSquareIcon /> Comments ({comments.length})
+            </button>
+            <button
+              className={`tab ${activeTab === 'activity' ? 'active' : ''}`}
+              onClick={() => setActiveTab('activity')}
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              <ActivityIcon /> Activity
+            </button>
+          </div>
+          <div>
+            {activeTab === 'details' && renderDetailsTab()}
+            {activeTab === 'attachments' && renderAttachmentsTab()}
+            {activeTab === 'comments' && renderCommentsTab()}
+            {activeTab === 'activity' && renderActivityTab()}
+          </div>
+        </div>
+      ) : (
+        /* Desktop Layout */
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '20px' }}>
+          {/* Left Panel - Main Content */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {renderDetailsTab()}
+            {renderAttachmentsTab()}
+            {renderCommentsTab()}
           </div>
 
-          {/* Details Section */}
-          {(bug.steps_to_reproduce || bug.expected_result || bug.actual_result) && (
+          {/* Right Panel - Sidebar */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Quick Status */}
             <div className="card">
-              <div className="card-header">
-                <span className="card-title">Bug Details</span>
+              <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span className={`badge ${getStatusClass(bug.status)}`}>{bug.status || 'Open'}</span>
+                  <span className={`badge ${getPriorityClass(bug.priority)}`}>{bug.priority || 'Medium'}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: bug.assignee_id ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' : 'var(--surface-2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      color: 'white',
+                    }}
+                  >
+                    {getProfileInitial(bug.assignee_id)}
+                  </div>
+                  <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{getProfileName(bug.assignee_id)}</span>
+                </div>
               </div>
-              <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {bug.steps_to_reproduce && (
+            </div>
+
+            {/* Meta Info */}
+            <div className="card">
+              <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Reporter</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{getProfileName(bug.reporter_id)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Created</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{formatDate(bug.created_at)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Updated</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{formatDate(bug.updated_at)}</span>
+                </div>
+                {bug.due_date && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Due Date</span>
+                    <span style={{ color: 'var(--text-primary)' }}>{formatDate(bug.due_date)}</span>
+                  </div>
+                )}
+                {bug.severity && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Severity</span>
+                    <span className={`badge ${getSeverityClass(bug.severity)}`}>{bug.severity}</span>
+                  </div>
+                )}
+                {bug.story_points && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Story Points</span>
+                    <span style={{ color: 'var(--text-primary)' }}>{bug.story_points}</span>
+                  </div>
+                )}
+                {bug.project_id && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Project</span>
+                    <span style={{ color: 'var(--text-primary)' }}>{getProjectName(bug.project_id)}</span>
+                  </div>
+                )}
+                {bug.sprint_id && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Sprint</span>
+                    <span style={{ color: 'var(--text-primary)' }}>{getSprintName(bug.sprint_id)}</span>
+                  </div>
+                )}
+                {bug.labels && bug.labels.length > 0 && (
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      Steps to Reproduce
-                    </label>
-                    <p style={{ marginTop: '6px', whiteSpace: 'pre-wrap', color: 'var(--text-secondary)' }}>
-                      {bug.steps_to_reproduce}
-                    </p>
-                  </div>
-                )}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  {bug.expected_result && (
-                    <div>
-                      <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        Expected Result
-                      </label>
-                      <p style={{ marginTop: '6px', color: 'var(--text-secondary)' }}>
-                        {bug.expected_result}
-                      </p>
-                    </div>
-                  )}
-                  {bug.actual_result && (
-                    <div>
-                      <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        Actual Result
-                      </label>
-                      <p style={{ marginTop: '6px', color: 'var(--text-secondary)' }}>
-                        {bug.actual_result}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Attachments */}
-          <div className="card">
-            <div className="card-header">
-              <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <PaperclipIcon />
-                Attachments ({attachments.length})
-              </span>
-              <label className="btn btn-sm btn-secondary" style={{ cursor: 'pointer' }}>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  multiple
-                  onChange={handleFileUpload}
-                  style={{ display: 'none' }}
-                  disabled={uploading}
-                />
-                {uploading ? 'Uploading...' : 'Add Files'}
-              </label>
-            </div>
-            <div className="card-body" style={{ padding: attachments.length === 0 ? '20px' : '12px' }}>
-              {attachments.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0' }}>
-                  No attachments yet
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
-                  {attachments.map((att) => (
-                    <div
-                      key={att.id}
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        background: 'var(--surface-1)',
-                        borderRadius: 'var(--radius-md)',
-                        overflow: 'hidden',
-                        cursor: 'pointer',
-                        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                      }}
-                      onClick={() => setViewingAttachment(att)}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px)'
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)'
-                        e.currentTarget.style.boxShadow = 'none'
-                      }}
-                    >
-                      {/* Thumbnail */}
-                      <div
-                        style={{
-                          width: '100%',
-                          height: '100px',
+                    <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Labels</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {bug.labels.map((label, i) => (
+                        <span key={i} style={{
+                          padding: '2px 8px',
                           background: 'var(--surface-2)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {isImageFile(att.mime_type) ? (
-                          <img
-                            src={getAttachmentUrl(att.file_path)}
-                            alt={att.filename}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                            }}
-                          />
-                        ) : (
-                          <div style={{ color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                            <FileIcon />
-                            <span style={{ fontSize: '10px', textTransform: 'uppercase' }}>
-                              {att.filename.split('.').pop()}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      {/* File Info */}
-                      <div style={{ padding: '8px 10px' }}>
-                        <div
-                          style={{
-                            fontSize: '12px',
-                            fontWeight: 500,
-                            color: 'var(--text-primary)',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            marginBottom: '4px',
-                          }}
-                          title={att.filename}
-                        >
-                          {att.filename}
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                          {Math.round(att.file_size / 1024)} KB
-                        </div>
-                      </div>
-                      {/* Actions */}
-                      <div style={{ display: 'flex', borderTop: '1px solid var(--border-subtle)', padding: '6px' }}>
-                        <a
-                          href={getAttachmentUrl(att.file_path)}
-                          download={att.filename}
-                          className="btn btn-sm btn-ghost"
-                          title="Download"
-                          style={{ flex: 1, padding: '4px', justifyContent: 'center' }}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <DownloadIcon />
-                        </a>
-                        {att.uploaded_by === currentUserId && (
-                          <button
-                            className="btn btn-sm btn-ghost"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              deleteAttachment(att)
-                            }}
-                            title="Delete"
-                            style={{ flex: 1, padding: '4px', justifyContent: 'center', color: '#ef4444' }}
-                          >
-                            <TrashIcon />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Comments */}
-          <div className="card">
-            <div className="card-header">
-              <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <MessageSquareIcon />
-                Comments ({comments.length})
-              </span>
-            </div>
-            <div className="card-body">
-              {/* New Comment */}
-              <div style={{ marginBottom: '20px' }}>
-                <textarea
-                  className="input"
-                  placeholder="Write a comment..."
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  rows={3}
-                  disabled={submittingComment}
-                />
-                <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={postComment}
-                    disabled={!newComment.trim() || submittingComment}
-                  >
-                    {submittingComment ? 'Posting...' : 'Post Comment'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Comments List */}
-              {comments.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0' }}>
-                  No comments yet. Be the first to comment!
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {comments.map((comment) => (
-                    <div key={comment.id} style={{ display: 'flex', gap: '12px' }}>
-                      <div
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          color: 'white',
-                          flexShrink: 0,
-                        }}
-                      >
-                        {getProfileInitial(comment.author_id)}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                          <span style={{ fontWeight: 600, fontSize: '13px' }}>
-                            {getProfileName(comment.author_id)}
-                          </span>
-                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                            {timeAgo(comment.created_at)}
-                          </span>
-                        </div>
-                        {editingCommentId === comment.id ? (
-                          <div>
-                            <textarea
-                              className="input"
-                              value={editingCommentText}
-                              onChange={(e) => setEditingCommentText(e.target.value)}
-                              rows={2}
-                            />
-                            <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
-                              <button className="btn btn-primary btn-sm" onClick={() => updateComment(comment.id)}>
-                                Save
-                              </button>
-                              <button className="btn btn-secondary btn-sm" onClick={() => setEditingCommentId(null)}>
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <p style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', marginBottom: '6px' }}>
-                              {renderTextWithLinks(comment.content)}
-                            </p>
-                            {comment.author_id === currentUserId && (
-                              <div style={{ display: 'flex', gap: '8px' }}>
-                                <button
-                                  className="btn btn-ghost btn-sm"
-                                  onClick={() => {
-                                    setEditingCommentId(comment.id)
-                                    setEditingCommentText(comment.content)
-                                  }}
-                                  style={{ padding: '4px 8px', fontSize: '12px' }}
-                                >
-                                  <EditIcon /> Edit
-                                </button>
-                                <button
-                                  className="btn btn-ghost btn-sm"
-                                  onClick={() => deleteComment(comment.id)}
-                                  style={{ padding: '4px 8px', fontSize: '12px', color: '#ef4444' }}
-                                >
-                                  <TrashIcon /> Delete
-                                </button>
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Panel - Sidebar */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Status & Priority */}
-          <div className="card">
-            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
-                  Status
-                </label>
-                {editingField === 'status' ? (
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <select
-                      className="input"
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      style={{ flex: 1 }}
-                    >
-                      <option value="Open">Open</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Resolved">Resolved</option>
-                      <option value="Closed">Closed</option>
-                    </select>
-                    <button className="btn btn-sm btn-primary" onClick={() => updateBugField('status', editValue)}>Save</button>
-                    <button className="btn btn-sm btn-secondary" onClick={() => setEditingField(null)}>Cancel</button>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => { setEditingField('status'); setEditValue(bug.status || 'Open') }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <span className={`badge ${getStatusClass(bug.status)}`}>{bug.status || 'Open'}</span>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
-                  Priority
-                </label>
-                {editingField === 'priority' ? (
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <select
-                      className="input"
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      style={{ flex: 1 }}
-                    >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="critical">Critical</option>
-                    </select>
-                    <button className="btn btn-sm btn-primary" onClick={() => updateBugField('priority', editValue)}>Save</button>
-                    <button className="btn btn-sm btn-secondary" onClick={() => setEditingField(null)}>Cancel</button>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => { setEditingField('priority'); setEditValue(bug.priority || 'medium') }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <span className={`badge ${getPriorityClass(bug.priority)}`}>
-                      {bug.priority || 'Medium'}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
-                  Assignee
-                </label>
-                {editingField === 'assignee_id' ? (
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <select
-                      className="input"
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      style={{ flex: 1 }}
-                    >
-                      <option value="">Unassigned</option>
-                      {profiles.map((p) => (
-                        <option key={p.id} value={p.id}>{p.full_name || p.email || p.id}</option>
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '11px',
+                          color: 'var(--text-secondary)',
+                        }}>{label}</span>
                       ))}
-                    </select>
-                    <button className="btn btn-sm btn-primary" onClick={() => updateBugField('assignee_id', editValue || null)}>Save</button>
-                    <button className="btn btn-sm btn-secondary" onClick={() => setEditingField(null)}>Cancel</button>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => { setEditingField('assignee_id'); setEditValue(bug.assignee_id || '') }}
-                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-                  >
-                    <div
-                      style={{
-                        width: '24px',
-                        height: '24px',
-                        borderRadius: '50%',
-                        background: bug.assignee_id ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' : 'var(--surface-2)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '10px',
-                        fontWeight: 600,
-                        color: 'white',
-                      }}
-                    >
-                      {getProfileInitial(bug.assignee_id)}
                     </div>
-                    <span style={{ color: 'var(--text-secondary)' }}>
-                      {getProfileName(bug.assignee_id)}
-                    </span>
                   </div>
                 )}
               </div>
             </div>
-          </div>
 
-          {/* Details */}
-          <div className="card">
-            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Reporter</span>
-                <span style={{ color: 'var(--text-primary)' }}>
-                  {getProfileName(bug.reporter_id)}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Created</span>
-                <span style={{ color: 'var(--text-primary)' }}>{formatDate(bug.created_at)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Updated</span>
-                <span style={{ color: 'var(--text-primary)' }}>{formatDate(bug.updated_at ?? undefined)}</span>
-              </div>
-              {bug.environment && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Environment</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{bug.environment}</span>
-                </div>
-              )}
-              {bug.device && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Device</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{bug.device}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Activity */}
-          <div className="card">
-            <div className="card-header">
-              <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
-                <ActivityIcon />
-                Activity
-              </span>
-            </div>
-            <div className="card-body" style={{ maxHeight: '300px', overflowY: 'auto' }}>
-              {activities.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0', fontSize: '13px' }}>
-                  No activity yet
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {activities.map((act) => (
-                    <div key={act.id} style={{ fontSize: '12px' }}>
-                      <div style={{ color: 'var(--text-muted)' }}>{timeAgo(act.created_at)}</div>
-                      <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>
-                        <span style={{ fontWeight: 500 }}>{getProfileName(act.user_id)}</span>
-                        {' '}{act.action}
-                        {act.field_name && (
-                          <span style={{ color: 'var(--text-muted)' }}>
-                            {' '}{act.field_name}: {act.old_value || '(empty)'} → {act.new_value || '(empty)'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Activity */}
+            {renderActivityTab()}
           </div>
         </div>
-      </div>
+      )}
 
       {/* Attachment Viewer Modal */}
       {viewingAttachment && (
@@ -975,7 +1443,6 @@ export default function BugDetailPage() {
           }}
           onClick={() => setViewingAttachment(null)}
         >
-          {/* Header */}
           <div
             style={{
               position: 'absolute',
@@ -992,9 +1459,7 @@ export default function BugDetailPage() {
           >
             <div style={{ color: 'white' }}>
               <div style={{ fontWeight: 600, marginBottom: '4px' }}>{viewingAttachment.filename}</div>
-              <div style={{ fontSize: '12px', opacity: 0.7 }}>
-                {Math.round(viewingAttachment.file_size / 1024)} KB • {timeAgo(viewingAttachment.created_at)}
-              </div>
+              <div style={{ fontSize: '12px', opacity: 0.7 }}>{Math.round(viewingAttachment.file_size / 1024)} KB • {timeAgo(viewingAttachment.created_at)}</div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <a
@@ -1034,7 +1499,6 @@ export default function BugDetailPage() {
             </div>
           </div>
 
-          {/* Content */}
           <div
             style={{
               maxWidth: '90vw',
@@ -1073,11 +1537,7 @@ export default function BugDetailPage() {
               <video
                 src={getAttachmentUrl(viewingAttachment.file_path)}
                 controls
-                style={{
-                  maxWidth: '100%',
-                  maxHeight: '80vh',
-                  borderRadius: '8px',
-                }}
+                style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: '8px' }}
               />
             ) : (
               <div
@@ -1090,12 +1550,8 @@ export default function BugDetailPage() {
                 }}
               >
                 <FileIcon />
-                <div style={{ marginTop: '16px', fontSize: '18px', fontWeight: 600 }}>
-                  {viewingAttachment.filename}
-                </div>
-                <div style={{ marginTop: '8px', color: 'var(--text-muted)' }}>
-                  This file type cannot be previewed
-                </div>
+                <div style={{ marginTop: '16px', fontSize: '18px', fontWeight: 600 }}>{viewingAttachment.filename}</div>
+                <div style={{ marginTop: '8px', color: 'var(--text-muted)' }}>This file type cannot be previewed</div>
                 <a
                   href={getAttachmentUrl(viewingAttachment.file_path)}
                   download={viewingAttachment.filename}
@@ -1109,15 +1565,7 @@ export default function BugDetailPage() {
             )}
           </div>
 
-          {/* Navigation hint */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '24px',
-              color: 'rgba(255,255,255,0.5)',
-              fontSize: '13px',
-            }}
-          >
+          <div style={{ position: 'absolute', bottom: '24px', color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>
             Click anywhere outside to close
           </div>
         </div>
