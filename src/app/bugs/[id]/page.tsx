@@ -463,9 +463,9 @@ export default function BugDetailPage() {
       </div>
 
       {/* Main Layout - JIRA Style */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '20px' }}>
+      <div className="bug-page-layout">
         {/* Left Panel - Main Content */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className="bug-page-main">
           {/* Description */}
           <div className="card">
             <div className="card-header">
@@ -773,7 +773,7 @@ export default function BugDetailPage() {
         </div>
 
         {/* Right Panel - Sidebar */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="bug-page-sidebar">
           {/* Status & Priority */}
           <div className="card">
             <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -800,9 +800,10 @@ export default function BugDetailPage() {
                 ) : (
                   <div
                     onClick={() => { setEditingField('status'); setEditValue(bug.status || 'Open') }}
-                    style={{ cursor: 'pointer' }}
+                    className="editable-field"
                   >
                     <span className={`badge ${getStatusClass(bug.status)}`}>{bug.status || 'Open'}</span>
+                    <span className="edit-icon"><EditIcon /></span>
                   </div>
                 )}
               </div>
@@ -830,11 +831,12 @@ export default function BugDetailPage() {
                 ) : (
                   <div
                     onClick={() => { setEditingField('priority'); setEditValue(bug.priority || 'medium') }}
-                    style={{ cursor: 'pointer' }}
+                    className="editable-field"
                   >
                     <span className={`badge ${getPriorityClass(bug.priority)}`}>
                       {bug.priority || 'Medium'}
                     </span>
+                    <span className="edit-icon"><EditIcon /></span>
                   </div>
                 )}
               </div>
@@ -862,7 +864,7 @@ export default function BugDetailPage() {
                 ) : (
                   <div
                     onClick={() => { setEditingField('assignee_id'); setEditValue(bug.assignee_id || '') }}
-                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    className="editable-field"
                   >
                     <div
                       style={{
@@ -880,9 +882,10 @@ export default function BugDetailPage() {
                     >
                       {getProfileInitial(bug.assignee_id)}
                     </div>
-                    <span style={{ color: 'var(--text-secondary)' }}>
+                    <span style={{ color: 'var(--text-secondary)', flex: 1 }}>
                       {getProfileName(bug.assignee_id)}
                     </span>
+                    <span className="edit-icon"><EditIcon /></span>
                   </div>
                 )}
               </div>
