@@ -1911,3 +1911,120 @@ svg {
     gap: 12px;
   }
 }
+
+/* ===== Mobile Tabs Improvements ===== */
+@media (max-width: 768px) {
+  .tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 0;
+    gap: 0;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab {
+    flex-shrink: 0;
+    padding: 10px 14px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+  .tab svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* ===== Board Page Mobile Header ===== */
+@media (max-width: 768px) {
+  .page-header {
+    padding: 0 0 16px 0;
+  }
+
+  .page-title {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+
+  .page-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  /* Kanban scroll hint */
+  .kanban-container::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 40px;
+    pointer-events: none;
+    background: linear-gradient(to left, var(--bg-primary) 0%, transparent 100%);
+  }
+
+  .kanban-container {
+    position: relative;
+    padding-right: 20px;
+  }
+}
+
+/* ===== Bug Detail Page Mobile Tab Content ===== */
+@media (max-width: 768px) {
+  /* Ensure proper spacing in cards */
+  .card {
+    margin-bottom: 0;
+  }
+
+  /* Editable fields on mobile */
+  .editable-field {
+    padding: 10px 12px;
+    margin: -6px -10px;
+  }
+
+  /* Comments input area */
+  .card-body textarea.input {
+    font-size: 16px;
+    padding: 12px;
+  }
+
+  /* Activity list spacing */
+  .card-body > div[style*="flex-direction: column"][style*="gap: 12px"] > div {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .card-body > div[style*="flex-direction: column"][style*="gap: 12px"] > div:last-child {
+    border-bottom: none;
+  }
+}
+
+/* ===== Form Mobile Improvements ===== */
+@media (max-width: 768px) {
+  .input-group {
+    margin-bottom: 16px;
+  }
+
+  .input-label {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  select.input {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m2 4 4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+  }
+}

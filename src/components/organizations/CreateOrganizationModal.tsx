@@ -58,6 +58,48 @@ export default function CreateOrganizationModal({ isOpen, onClose, onSuccess }: 
     }
   }
 
+  // Ensure user profile exists in the profiles table
+  async function ensureProfileExists(userId: string): Promise<boolean> {
+    try {
+      const { data: user } = await supabase.auth.getUser()
+      const userEmail = user?.user?.email
+
+      // Check if profile exists
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .single()
+
+      if (existingProfile) {
+        return true
+      }
+
+      // Profile doesn't exist, create it
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          email: userEmail || '',
+          full_name: userEmail ? userEmail.split('@')[0] : 'User',
+        })
+
+      if (insertError) {
+        console.error('Failed to create profile:', insertError)
+        // If it's a duplicate key error, the profile exists (race condition)
+        if (insertError.code === '23505') {
+          return true
+        }
+        return false
+      }
+
+      return true
+    } catch (err) {
+      console.error('Error ensuring profile exists:', err)
+      return false
+    }
+  }
+
   function resetForm() {
     setName('')
     setSlug('')
@@ -90,6 +132,13 @@ export default function CreateOrganizationModal({ isOpen, onClose, onSuccess }: 
 
     setSubmitting(true)
     try {
+      // Ensure profile exists before creating organization (fixes foreign key constraint)
+      const profileExists = await ensureProfileExists(currentUserId)
+      if (!profileExists) {
+        toast.error('Failed to verify user profile. Please try again.')
+        return
+      }
+
       // Create the organization
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
