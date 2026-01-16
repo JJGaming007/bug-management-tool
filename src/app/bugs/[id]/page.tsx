@@ -80,12 +80,6 @@ const InfoIcon = () => (
   </svg>
 )
 
-const SettingsIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" />
-  </svg>
-)
-
 // Helper function to check if file is an image
 function isImageFile(mimeType: string): boolean {
   return mimeType.startsWith('image/')
@@ -570,9 +564,8 @@ export default function BugDetailPage() {
         <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
           {label}
         </label>
-        <div style={{ color: value ? 'var(--text-primary)' : 'var(--text-muted)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ whiteSpace: 'pre-wrap' }}>{displayValue}</span>
-          <EditIcon />
+        <div style={{ color: value ? 'var(--text-primary)' : 'var(--text-muted)', fontSize: '14px' }}>
+          <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{displayValue}</span>
         </div>
       </div>
     )
@@ -677,10 +670,9 @@ export default function BugDetailPage() {
             ) : (
               <div
                 onClick={() => { setEditingField('status'); setEditValue(bug.status || 'Open') }}
-                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                style={{ cursor: 'pointer' }}
               >
                 <span className={`badge ${getStatusClass(bug.status)}`}>{bug.status || 'Open'}</span>
-                <EditIcon />
               </div>
             )}
           </div>
@@ -708,10 +700,9 @@ export default function BugDetailPage() {
             ) : (
               <div
                 onClick={() => { setEditingField('priority'); setEditValue(bug.priority || 'medium') }}
-                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                style={{ cursor: 'pointer' }}
               >
                 <span className={`badge ${getPriorityClass(bug.priority)}`}>{bug.priority || 'Medium'}</span>
-                <EditIcon />
               </div>
             )}
           </div>
@@ -739,10 +730,9 @@ export default function BugDetailPage() {
             ) : (
               <div
                 onClick={() => { setEditingField('severity'); setEditValue(bug.severity || 'major') }}
-                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                style={{ cursor: 'pointer' }}
               >
                 <span className={`badge ${getSeverityClass(bug.severity)}`}>{bug.severity || 'Major'}</span>
-                <EditIcon />
               </div>
             )}
           </div>
@@ -770,10 +760,9 @@ export default function BugDetailPage() {
             ) : (
               <div
                 onClick={() => { setEditingField('issue_type'); setEditValue(bug.issue_type || 'Bug') }}
-                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                style={{ cursor: 'pointer' }}
               >
                 <span style={{ color: 'var(--text-primary)' }}>{bug.issue_type || 'Bug'}</span>
-                <EditIcon />
               </div>
             )}
           </div>
@@ -828,7 +817,6 @@ export default function BugDetailPage() {
                   {getProfileInitial(bug.assignee_id)}
                 </div>
                 <span style={{ color: 'var(--text-secondary)' }}>{getProfileName(bug.assignee_id)}</span>
-                <EditIcon />
               </div>
             )}
           </div>
@@ -856,10 +844,9 @@ export default function BugDetailPage() {
             ) : (
               <div
                 onClick={() => { setEditingField('project_id'); setEditValue(bug.project_id || '') }}
-                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                style={{ cursor: 'pointer' }}
               >
                 <span style={{ color: bug.project_id ? 'var(--text-primary)' : 'var(--text-muted)' }}>{getProjectName(bug.project_id)}</span>
-                <EditIcon />
               </div>
             )}
           </div>
@@ -887,10 +874,9 @@ export default function BugDetailPage() {
             ) : (
               <div
                 onClick={() => { setEditingField('sprint_id'); setEditValue(bug.sprint_id || '') }}
-                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                style={{ cursor: 'pointer' }}
               >
                 <span style={{ color: bug.sprint_id ? 'var(--text-primary)' : 'var(--text-muted)' }}>{getSprintName(bug.sprint_id)}</span>
-                <EditIcon />
               </div>
             )}
           </div>
@@ -918,10 +904,9 @@ export default function BugDetailPage() {
             ) : (
               <div
                 onClick={() => { setEditingField('epic_id'); setEditValue(bug.epic_id || '') }}
-                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                style={{ cursor: 'pointer' }}
               >
                 <span style={{ color: bug.epic_id ? 'var(--text-primary)' : 'var(--text-muted)' }}>{getEpicName(bug.epic_id)}</span>
-                <EditIcon />
               </div>
             )}
           </div>

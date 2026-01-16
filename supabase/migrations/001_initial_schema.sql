@@ -43,6 +43,39 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
 -- =====================================================
+-- ORGANIZATIONS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS organizations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  description TEXT,
+  logo_url TEXT,
+  owner_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for organization slug
+CREATE INDEX IF NOT EXISTS idx_organizations_slug ON organizations(slug);
+
+-- =====================================================
+-- ORGANIZATION MEMBERS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS organization_members (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  role TEXT DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member', 'viewer')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(organization_id, user_id)
+);
+
+-- Index for org members
+CREATE INDEX IF NOT EXISTS idx_org_members_org_id ON organization_members(organization_id);
+CREATE INDEX IF NOT EXISTS idx_org_members_user_id ON organization_members(user_id);
+
+-- =====================================================
 -- PROJECTS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS projects (
@@ -50,10 +83,14 @@ CREATE TABLE IF NOT EXISTS projects (
   name TEXT NOT NULL,
   key TEXT NOT NULL UNIQUE,
   description TEXT,
+  organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
   created_by UUID REFERENCES profiles(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Index for projects by organization
+CREATE INDEX IF NOT EXISTS idx_projects_org_id ON projects(organization_id);
 
 -- =====================================================
 -- SPRINTS TABLE
@@ -210,6 +247,8 @@ CREATE TABLE IF NOT EXISTS saved_filters (
 
 -- Enable RLS on all tables
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE organization_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sprints ENABLE ROW LEVEL SECURITY;
 ALTER TABLE epics ENABLE ROW LEVEL SECURITY;
@@ -229,6 +268,20 @@ CREATE POLICY "Users can insert their own profile" ON profiles
 
 CREATE POLICY "Users can update their own profile" ON profiles
   FOR UPDATE TO authenticated USING (auth.uid() = id);
+
+-- Organizations: All authenticated users can view and manage
+CREATE POLICY "Organizations viewable by authenticated users" ON organizations
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Organizations manageable by authenticated users" ON organizations
+  FOR ALL TO authenticated USING (true);
+
+-- Organization Members: All authenticated users can view and manage
+CREATE POLICY "Org members viewable by authenticated users" ON organization_members
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Org members manageable by authenticated users" ON organization_members
+  FOR ALL TO authenticated USING (true);
 
 -- Projects: All authenticated users can view and manage
 CREATE POLICY "Projects viewable by authenticated users" ON projects
@@ -342,6 +395,9 @@ $$ LANGUAGE plpgsql;
 
 -- Apply to all tables with updated_at
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER update_organizations_updated_at BEFORE UPDATE ON organizations
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON projects

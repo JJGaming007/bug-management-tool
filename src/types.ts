@@ -8,23 +8,13 @@ export type IssueType = 'Bug' | 'Task' | 'Story' | 'Sub-task'
 export type UserRole = 'admin' | 'qa_lead' | 'qa_tester' | 'developer' | 'viewer'
 export type OrgRole = 'owner' | 'admin' | 'member' | 'viewer'
 
-export interface Profile {
-  id: string
-  email: string
-  full_name?: string | null
-  avatar_url?: string | null
-  role: UserRole
-  department?: string | null
-  created_at: string
-  updated_at?: string
-}
-
 export interface Organization {
   id: string
   name: string
   slug: string
   description?: string | null
   logo_url?: string | null
+  owner_id?: string | null
   created_by?: string | null
   created_at: string
   updated_at?: string
@@ -36,6 +26,17 @@ export interface OrganizationMember {
   user_id: string
   role: OrgRole
   created_at: string
+}
+
+export interface Profile {
+  id: string
+  email: string
+  full_name?: string | null
+  avatar_url?: string | null
+  role: UserRole
+  department?: string | null
+  created_at: string
+  updated_at?: string
 }
 
 export interface Project {

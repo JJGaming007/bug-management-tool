@@ -1,6 +1,48 @@
 export interface Database {
   public: {
     Tables: {
+      organizations: {
+        Row: {
+          id: string
+          name: string
+          slug: string
+          description: string | null
+          logo_url: string | null
+          owner_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          name: string
+          slug: string
+          description?: string | null
+          logo_url?: string | null
+          owner_id?: string | null
+        }
+        Update: {
+          name?: string
+          slug?: string
+          description?: string | null
+          logo_url?: string | null
+        }
+      }
+      organization_members: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string
+          role: 'owner' | 'admin' | 'member' | 'viewer'
+          created_at: string
+        }
+        Insert: {
+          organization_id: string
+          user_id: string
+          role?: 'owner' | 'admin' | 'member' | 'viewer'
+        }
+        Update: {
+          role?: 'owner' | 'admin' | 'member' | 'viewer'
+        }
+      }
       profiles: {
         Row: {
           id: string
@@ -96,6 +138,7 @@ export interface Database {
           name: string
           description: string | null
           key: string
+          organization_id: string | null
           created_by: string
           created_at: string
           updated_at: string
@@ -104,11 +147,13 @@ export interface Database {
           name: string
           description?: string | null
           key: string
+          organization_id?: string | null
           created_by: string
         }
         Update: {
           name?: string
           description?: string | null
+          organization_id?: string | null
         }
       }
       components: {

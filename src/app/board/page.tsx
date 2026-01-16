@@ -1,12 +1,22 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import KanbanBoard from '@/components/bugs/KanbanBoard'
 import { useBugs } from '@/hooks/useBugs'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 
 export default function BoardPage() {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    function checkMobile() {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
   const { data: bugs = [], isLoading, error, refetch } = useBugs()
   const [updating, setUpdating] = useState<string | number | null>(null)
 
@@ -61,7 +71,11 @@ export default function BoardPage() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Board</h1>
-        <p className="page-subtitle">Drag and drop bugs between columns to update their status</p>
+        <p className="page-subtitle">
+          {isMobile
+            ? 'Swipe to see columns. Drag bugs to change status.'
+            : 'Drag and drop bugs between columns to update their status'}
+        </p>
       </div>
 
       {isLoading ? (
