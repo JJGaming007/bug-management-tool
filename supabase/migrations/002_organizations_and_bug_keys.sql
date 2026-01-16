@@ -96,6 +96,12 @@ CREATE TRIGGER generate_bug_key_trigger
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organization_members ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (to avoid duplicate policy errors)
+DROP POLICY IF EXISTS "Organizations viewable by authenticated users" ON organizations;
+DROP POLICY IF EXISTS "Organizations manageable by authenticated users" ON organizations;
+DROP POLICY IF EXISTS "Org members viewable by authenticated users" ON organization_members;
+DROP POLICY IF EXISTS "Org members manageable by authenticated users" ON organization_members;
+
 -- Organizations: Viewable by all authenticated users
 CREATE POLICY "Organizations viewable by authenticated users" ON organizations
   FOR SELECT TO authenticated USING (true);
